@@ -52,7 +52,7 @@ uv run python train_age_classifier_v3.py --debug                 # smoke test
 
 # Reproduce the winner
 uv run python train_age_classifier_v3.py --ls 0.0 --mixup 0.0 --dropouts 0.0
-# -> resnet18_classifier_datav5_Xv1_gradual_unfreeze_nolblsmooth_mx00_do00  (0.656)
+# -> resnet18_classifier_datav5_Xv1_gradual_unfreeze_nolblsmooth_mx00_do00
 
 # Longer schedule on the same config (no improvement observed)
 uv run python train_age_classifier_v3.py --ls 0.0 --mixup 0.0 --dropouts 0.0 \
@@ -74,7 +74,8 @@ uv run python train_age_classifier_v3.py --ls <best> \
 ```bash
 uv run python train_age_classifier_v3.py --ls 0.0 --mixup 0.0 --dropouts 0.0 \
     --no-nucleus
-# -> _nonuc run; held-out ≈ 0.486 (chance) — the Nucleus channel is required
+# -> _nonuc run; on the reference dataset this collapsed to chance, i.e. the
+#    Nucleus channel was required (recorded numbers are in HELP.md)
 ```
 
 All v3 rows land in `training_report_v3.csv`.
@@ -83,8 +84,8 @@ All v3 rows land in `training_report_v3.csv`.
 
 ```bash
 uv run python train_stiffness_regression.py --debug                 # smoke test
-uv run python train_stiffness_regression.py --dataset datav5        # 458px tiles, Xv1
-uv run python train_stiffness_regression.py --dataset datav5.2      # 3x3 grids, Xv4
+uv run python train_stiffness_regression.py --dataset datav5        # tiled images, Xv1
+uv run python train_stiffness_regression.py --dataset datav5.2      # grid-averaged variant, Xv4
 ```
 
 Results append to `training_report_regression.csv`; checkpoints go to

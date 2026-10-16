@@ -12,7 +12,7 @@ final fully-connected layer, and the artefacts keep the historical layout:
 are always named after the phase that was passed on the command line, so the
 old ``-p val`` command lines keep producing ``val_*`` artefacts.
 
-Usage (from inside stressnet/)::
+Usage (from the repository root)::
 
     # logical dataset, resolved via site_config.yaml
     uv run python predict.py -w path/to/run_45epoch_AdamW.pt --dataset datav5

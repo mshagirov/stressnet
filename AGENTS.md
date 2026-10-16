@@ -1,8 +1,9 @@
 # AGENTS.md
 
-Fine-tuning CNNs (ResNet18/34) on 16-bit multi-channel microscopy images for
-stiffness regression and age / stiffness-category classification. Applies to any
-2D multi-channel microscopy dataset (the channel names/suffixes are conventions).
+Fine-tuning CNNs (ResNet18/34) on 2D multi-channel microscopy TIFFs for scalar
+regression and multi-class classification. General-purpose for any such
+dataset; the reference task is stiffness regression plus age /
+stiffness-category classification.
 Python 3.11, uv, `torch==2.3.1` + `torchvision==0.18.1`. No tests, no CI.
 
 ## Setup & commands

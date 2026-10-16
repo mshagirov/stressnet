@@ -132,18 +132,13 @@ run on the *Prediction_Data* phase is kept via best-val checkpointing.
   `<run>_{train,val}_preds.csv`.
 - Report: `training_report_regression.csv`.
 
-## Results so far
+## Reference results
 
-Verified on `datav5` (held-out = `Prediction_Data`, scored once):
-
-| Task | Outcome |
-| --- | --- |
-| **Age** | Best is **plain gradual unfreeze** — no label smoothing, no MixUp, no dropout (`gradual_unfreeze_nolblsmooth_mx00_do00`), held-out accuracy **0.656**. Longer schedules (freeze-20/100 epochs) matched it. |
-| **Age, nucleus ablated** | Dropping the Nucleus channel collapses to chance (**0.486**): the Nucleus channel is *required*; collagen alone cannot classify age. |
-| **2-way stiffness category** | Not learnable with this stack: ~0.86 overall but **0.494 macro** (collapse to `low`); `--balanced` and longer schedules stay ≈ chance on `high`. |
-| **3-way stiffness category** | **0.530 overall / 0.318 macro** — collapses to the majority `medium` class. |
-| **4-way stiffness category** | Category-stratified **0.475 / 0.339 macro** (group-stratified 0.437/0.301) — ≈ majority-class baseline; `adult_high` is never predicted. |
-
-`datav6` (three-channel) was dropped for age classification: it overfits.
+Task-level outcomes depend on the specific dataset and are therefore not part
+of the generic library. The recorded held-out numbers for the reference dataset
+are kept in the gitignored `HELP.md`. Summary: the **age** task was learnable,
+the **Nucleus** channel was required for it, and the **stiffness-category**
+tasks stayed near the majority-class baseline regardless of balancing or
+schedule length.
 
 See also: [reproduction.md](reproduction.md) · [models.md](models.md) · [data.md](data.md)

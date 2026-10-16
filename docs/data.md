@@ -69,9 +69,12 @@ thresholds from a file at the **dataset root** — i.e.
 
 ```yaml
 stiffness_threshold:
-  young: 7.0
-  adult: 12.0
+  young: <young cut-off>
+  adult: <adult cut-off>
 ```
+
+The actual numbers come from your labels (see the dataset's own
+`stiffness_thresholds.yaml`; the reference project's values are in `HELP.md`).
 
 The file is mandatory for those datasets; if it is missing they raise
 `FileNotFoundError` with the full expected path. The category definitions are:

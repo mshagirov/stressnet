@@ -1,9 +1,8 @@
 '''Train a stiffness regression model (ResNet18, scalar output).
 
-Datasets (--dataset):
-  datav5  : v5 tiles, Xv1 transforms (im_dim 256)
-  datav5.2: v5.2-gridaveraged, 1376x1376 3x3 grids, Xv4 transforms
-            (im_dim_v4 = floor(1376/sqrt(2)) = 972)
+Datasets (--dataset), resolved from site_config.yaml:
+  datav5  : tiled images, Xv1 transforms (crop 256)
+  datav5.2: grid-averaged variant, Xv4 transforms (larger grid crop)
 
 Recipe (previous best gradual-unfreeze strategy):
   - Yv1 target transform: log then (x-1.85)/3.0; loss = MSE
@@ -17,7 +16,7 @@ curves and a two-panel predicted-vs-true scatter (train / val) with a dashed
 1-to-1 line. Dataset roots, the stiffness column and save_root come from
 stressnet.config (site_config.yaml / environment variables); see HELP.md.
 
-Usage (from inside stressnet/):
+Usage (from the repository root):
     uv run python train_stiffness_regression.py --dataset datav5
     uv run python train_stiffness_regression.py --debug        # smoke test
 '''

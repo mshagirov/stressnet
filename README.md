@@ -1,15 +1,16 @@
 # stressnet
 
-Fine-tuning CNNs (ResNet18/34) on 16-bit multi-channel microscopy images
-(Nucleus, Collagen, optionally Actin) to:
+A small toolkit for fine-tuning CNNs (ResNet18/34) on **2D microscopy data**
+(16-bit single-channel TIFFs assembled into multi-channel image tensors). It
+supports two task families:
 
-- **regress** mechanical stiffness (scalar output), and
-- **classify** age (young/adult) or stiffness categories (low/high, 3-way, 4-way).
+- **regression** — predict a continuous scalar label per image, and
+- **classification** — predict one of two or more categories per image.
 
-The code is **not tied to any particular sample type** — it applies to any 2D
-multi-channel microscopy dataset laid out as described in
-[docs/data.md](docs/data.md); the channel names and location suffixes are
-configurable conventions.
+The reference application shipped with the code is mechanical-stiffness
+regression and age / stiffness-category classification, but the dataset layout,
+channel names and label columns are configurable, so the same pipeline applies
+to any multi-channel 2D microscopy dataset.
 
 Python 3.11, managed with [uv](https://docs.astral.sh/uv/), `torch==2.3.1` +
 `torchvision==0.18.1`. There is no test suite and no CI; scripts are verified by

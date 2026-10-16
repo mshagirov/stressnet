@@ -7,8 +7,9 @@
 
 title: stressnet
 description: >-
-  Fine-tuning CNNs (ResNet18/34) for mechanical stiffness regression and
-  age / stiffness-category classification from 16-bit microscopy TIFFs.
+  A toolkit for fine-tuning CNNs (ResNet18/34) on 2D microscopy data: scalar
+  regression and multi-class classification, with the reference task being
+  mechanical-stiffness and age / stiffness-category prediction from 16-bit TIFFs.
 
 theme: jekyll-theme-minimal
 

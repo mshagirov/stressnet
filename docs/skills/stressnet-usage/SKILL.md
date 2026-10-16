@@ -2,7 +2,8 @@
 name: stressnet-usage
 description: >
   Train, fine-tune, run experiments with, and report on the stressnet CNN
-  models for mechanical stiffness. Use when asked to train or fine-tune a model
+  models for 2D microscopy regression/classification (reference task: mechanical
+  stiffness). Use when asked to train or fine-tune a model
   (including fine-tuning on top of an existing checkpoint), run an experiment,
   find where trained models are saved, choose a model or run naming convention,
   or summarise results from the experiment reports. Triggers: train, fine-tune,
@@ -12,11 +13,11 @@ description: >
 
 # Using stressnet: train, fine-tune, report
 
-The repo fine-tunes ResNet18/34 models to (a) predict mechanical stiffness as a
-scalar (regression) and (b) classify age (`young`/`adult`) or stiffness
-categories from 16-bit TIFF microscopy channels (Nucleus/Collagen, optionally
-Actin). The pipeline is not specific to any sample type — any 2D multi-channel
-microscopy dataset with the layout in `docs/data.md` works.
+The repo fine-tunes ResNet18/34 models for 2D microscopy data to (a) predict a
+scalar label (regression) and (b) classify samples into categories, from 16-bit
+TIFF channel stacks. The shipped reference tasks are mechanical-stiffness
+regression and age (`young`/`adult`) or stiffness-category classification; the
+dataset layout, channel names and label columns come from `site_config.yaml`.
 
 Training drivers live at the repository root (`train_*.py`); shared code lives in
 `stressnet/` (`config.py`, `data.py`, `engine.py`, `metrics.py`, `plots.py`,
@@ -196,14 +197,17 @@ score (`heldout_acc`; classification reports also carry `heldout_macro_acc`).
 Rank runs by heldout performance and call out which run directory / weights file
 each result came from.
 
-Keep these retained findings in mind when interpreting results:
+Keep these retained findings in mind when interpreting results (the recorded
+numbers for the reference dataset are in the gitignored `HELP.md`):
 
-- **Age** classification works best with **plain gradual unfreeze** (no label
-  smoothing, no MixUp, no dropout). The **Nucleus** channel is required —
-  ablating it drops heldout accuracy to ≈ chance; collagen alone is not enough.
-- **Stiffness-category** tasks (2-way, 3-way, 4-way) are **≈ chance / majority
-  baseline** on the heldout split, regardless of balancing or longer schedules —
-  treat near-baseline macro accuracy as expected, not as a bug.
+- **Age** classification worked best with **plain gradual unfreeze** (no label
+  smoothing, no MixUp, no dropout), and the **Nucleus** channel was required —
+  ablating it dropped heldout accuracy to ≈ chance.
+- **Stiffness-category** tasks (2-way, 3-way, 4-way) sat at **≈ chance /
+  majority baseline** on the heldout split regardless of balancing or longer
+  schedules — treat near-baseline macro accuracy as expected, not as a bug.
+
+These are dataset-dependent; do not assume they transfer to another dataset.
 
 ## Step 6 — Keep paths out of code
 
