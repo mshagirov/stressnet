@@ -13,9 +13,11 @@
     @media screen and (min-width: 961px) {
       body { padding: 40px; }
       .wrapper { width: auto; max-width: none; margin: 0; }
-      header { width: 190px; max-height: calc(100vh - 80px); overflow-y: auto; }
+      /* z-index lifts the sidebar (and the search overlay inside it) above the
+         fixed footer, which would otherwise paint on top of the results. */
+      header { width: 190px; max-height: calc(100vh - 80px); overflow-y: auto; z-index: 100; }
       section { width: calc(100% - 230px); }
-      footer { width: 190px; }
+      footer { width: 190px; z-index: 1; }
     }
 
     header .subtitle { margin: -.6rem 0 .8rem; color: #666; font-size: 13px; }
