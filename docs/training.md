@@ -72,7 +72,8 @@ the run name so stages never collide:
 3. `--ls <best> --mixup <best> --dropouts 0 0.2 0.5` — dropout sweep.
 
 - Extra flags: `--ls`, `--mixup`, `--dropouts`, `--freeze-epochs`,
-  `--no-nucleus`.
+  `--no-nucleus`. Note `--epochs` defaults to **30**; the winning recipe used
+  **40** (`--epochs 40`, 10 frozen + 30 unfrozen).
 - Run dir:
   `resnet18_classifier_<data>_Xv1_gradual_unfreeze_<nolblsmooth|wlblsmooth>`
   `[_mx<NN>][_do<NN>][_fz<NN>][_nonuc][_debug]`.

@@ -125,7 +125,8 @@ def run_training(data_key: str, s: dict, args) -> dict:
         optimizer, T_max=freeze_epochs)
     model, l1 = train_model(model, criterion, optimizer, scheduler,
                             dataloaders=dataloaders, dataset_sizes=dataset_sizes,
-                            num_epochs=freeze_epochs, device=TORCH_DEVICE)
+                            num_epochs=freeze_epochs, device=TORCH_DEVICE,
+                            return_best_val=True)
     for phase in losses:
         losses[phase] += l1[phase]
     stage1_best = min(l1['val'])

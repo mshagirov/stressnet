@@ -51,13 +51,14 @@ no dropout, so drive the ladder to that point explicitly:
 ```bash
 uv run python train_age_classifier_v3.py --debug                 # smoke test
 
-# Reproduce the winner
-uv run python train_age_classifier_v3.py --ls 0.0 --mixup 0.0 --dropouts 0.0
+# Reproduce the winner (datav5, 10 frozen + 30 unfrozen = 40 epochs)
+uv run python train_age_classifier_v3.py --datasets datav5 \
+    --ls 0.0 --mixup 0.0 --dropouts 0.0 --epochs 40
 # -> resnet18_classifier_datav5_Xv1_gradual_unfreeze_nolblsmooth_mx00_do00
 
 # Longer schedule on the same config (no improvement observed)
-uv run python train_age_classifier_v3.py --ls 0.0 --mixup 0.0 --dropouts 0.0 \
-    --freeze-epochs 20 --epochs 100
+uv run python train_age_classifier_v3.py --datasets datav5 \
+    --ls 0.0 --mixup 0.0 --dropouts 0.0 --freeze-epochs 20 --epochs 100
 ```
 
 The staged ladder itself (only needed to re-derive the winner):
@@ -73,8 +74,8 @@ uv run python train_age_classifier_v3.py --ls <best> \
 ### 1c. Nucleus ablation
 
 ```bash
-uv run python train_age_classifier_v3.py --ls 0.0 --mixup 0.0 --dropouts 0.0 \
-    --no-nucleus
+uv run python train_age_classifier_v3.py --datasets datav5 \
+    --ls 0.0 --mixup 0.0 --dropouts 0.0 --epochs 40 --no-nucleus
 # -> _nonuc run; on the reference dataset this collapsed to chance, i.e. the
 #    Nucleus channel was required (recorded numbers are in HELP.md)
 ```
