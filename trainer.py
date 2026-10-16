@@ -1,9 +1,20 @@
+'''
+Training loop shared by the regression and classification drivers.
+
+The module-level `device` (and therefore `train_model`'s default) follows
+`models.TORCH_DEVICE`, i.e. CUDA when available and CPU otherwise; callers can
+still pass an explicit device.
+'''
+
+import time
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import time
+
 import torch
 
-device = torch.device('cpu')
+from models import TORCH_DEVICE
+
+device = TORCH_DEVICE
 
 def train_model(
     model: torch.nn.Module,
@@ -16,8 +27,19 @@ def train_model(
     return_best_val=False,
     device=device
 ):
+    '''
+    Run `num_epochs` of train/val epochs over `dataloaders`.
+
+    Batches may be plain image tensors or `(image, age_loc, ...)` tuples, which
+    is auto-detected and forwarded as `model(image, age_loc)`.
+
+    Returns `(model, losses)`; `losses` maps each phase in `dataset_sizes` to
+    its per-epoch loss. With `return_best_val=True` the weights with the best
+    validation loss are loaded back into `model` before returning.
+    '''
     since = time.time()
-    
+    model = model.to(device)
+
     phases = list(dataset_sizes.keys())
     losses = {k:[] for k in phases}
     
@@ -68,7 +90,7 @@ def train_model(
 
                     # statistics
                     running_loss += loss.item() * batch_size
-                if (phase == 'train') and scheduler!=None:
+                if (phase == 'train') and scheduler is not None:
                     scheduler.step()
 
                 epoch_loss = running_loss / dataset_sizes[phase]
@@ -91,5 +113,7 @@ def train_model(
 
         if return_best_val:
             # load best model weights
-            model.load_state_dict(torch.load(best_model_params_path, weights_only=True))
+            model.load_state_dict(
+                torch.load(best_model_params_path, weights_only=True, map_location=device)
+            )
     return model, losses

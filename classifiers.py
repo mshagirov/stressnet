@@ -1,3 +1,5 @@
+from collections.abc import Callable
+from enum import Enum
 from pathlib import Path
 
 import torch
@@ -10,14 +12,21 @@ from models import TORCH_DEVICE
 
 
 def _resnet_classifier(
-    builder,
-    weights_enum,
+    builder: Callable[..., nn.Module],
+    weights_enum: type[Enum],
     num_classes: int,
     pretrained: bool,
     weights_path: str | Path | None,
     device: torch.device,
     dropout: float,
 ) -> nn.Module:
+    '''
+    Build a torchvision ResNet classifier head and optionally load weights.
+
+    builder      : torchvision model constructor (e.g. torchvision.models.resnet18)
+    weights_enum : matching weights enum, used only when `pretrained` is True
+    dropout      : if > 0, the head becomes Sequential(Dropout, Linear)
+    '''
     weights = weights_enum.DEFAULT if pretrained else None
     model_ft = builder(weights=weights)
     num_ftrs = model_ft.fc.in_features
@@ -63,6 +72,11 @@ def resnet34_classifier(
     device:torch.device = TORCH_DEVICE,
     dropout:float = 0.0,
 ) -> nn.Module:
+    '''
+    Vanilla ResNet34 classifier head on top of the ImageNet-pretrained backbone.
+
+    Arguments are identical to `resnet18_classifier` (see there for details).
+    '''
     return _resnet_classifier(
         pt_resnet34, ResNet34_Weights, num_classes, pretrained,
         weights_path, device, dropout,

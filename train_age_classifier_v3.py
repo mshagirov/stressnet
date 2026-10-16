@@ -24,8 +24,11 @@ every swept knob (`_mx00`, `_do02`, ...) so stages never collide.
 
 Differences from v2: only training-set and held-out (Prediction_Data)
 predictions are saved as CSVs/plots (internal-val predictions are computed
-for training/early stopping but not written out); trainer, datasets and
-transforms are reused unchanged from the v2 modules.
+for training/early stopping but not written out); datasets, transforms,
+trainer and plotting come from the shared `stressnet` package.
+
+Dataset locations, save locations and the label-file layout come from
+stressnet.config (site_config.yaml / environment variables); see HELP.md.
 '''
 
 import argparse
@@ -39,32 +42,29 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, Subset
 
-from classifier_trainer_v2 import train_classifier_v2
 from classifiers import resnet18_classifier
 from dataset import AgeDataset, AgeDatasetNoNucleus
 from models import TORCH_DEVICE
-from train_age_classifier_v2 import (
-    DATASET_CONFIGS,
-    REPORT_COLUMNS,
-    SAVE_ROOT,
-    TRAIN_TRANSFORMS,
-    append_report,
-    build_datasets,
-    build_loaders,
+from stressnet.config import DATASET_KEYS, dataset_config, save_root
+from stressnet.data import TRAIN_TRANSFORMS, build_datasets, build_loaders
+from stressnet.engine import (
+    AGE_TO_IDX,
     build_optimizer,
-    plot_history,
-    plot_predictions,
-    predict_phase,
     set_backbone_trainable,
+    train_classifier,
 )
+from stressnet.metrics import accuracy, predict_classifier
+from stressnet.plots import plot_classifier_predictions, plot_history
+from stressnet.reporting import REPORT_COLUMNS, append_report
 
+CLASS_NAMES = list(AGE_TO_IDX)
 FREEZE_EPOCHS = 10
 
 
 def parse_args(args):
     parser = argparse.ArgumentParser(
         description='Train age classifiers, v3 staged gradual-unfreeze ladder')
-    parser.add_argument('--datasets', nargs='+', choices=list(DATASET_CONFIGS),
+    parser.add_argument('--datasets', nargs='+', choices=list(DATASET_KEYS),
                         default=None)
     parser.add_argument('--ls', nargs='+', type=float, default=None,
                         help='label-smoothing values to sweep '
@@ -125,12 +125,12 @@ def run_training(data_key: str, strategy_name: str, s: dict, args) -> dict:
         model_name += '_nonuc'
     if args.debug:
         model_name += '_debug'
-    model_dir = SAVE_ROOT/model_name
+    model_dir = save_root()/model_name
     model_dir.mkdir(parents=True, exist_ok=True)
 
     print(f'\n=== {model_name} ===')
     dataset_cls = AgeDatasetNoNucleus if args.no_nucleus else AgeDataset
-    datasets = build_datasets(DATASET_CONFIGS[data_key],
+    datasets = build_datasets(dataset_config(data_key),
                               TRAIN_TRANSFORMS[s['transform']], args.val_frac,
                               dataset_cls=dataset_cls)
     if args.debug:
@@ -161,9 +161,10 @@ def run_training(data_key: str, strategy_name: str, s: dict, args) -> dict:
     optimizer = build_optimizer(model, s, backbone_trainable=False)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=freeze_epochs)
-    model, l1, a1, best_loss = train_classifier_v2(
+    model, l1, a1, best_loss = train_classifier(
         model, criterion, optimizer, scheduler,
         dataloaders=dataloaders, dataset_sizes=dataset_sizes,
+        label_to_idx=AGE_TO_IDX,
         num_epochs=freeze_epochs, device=TORCH_DEVICE,
         checkpoint_path=checkpoint_path,
         early_stopping_patience=None,
@@ -185,9 +186,10 @@ def run_training(data_key: str, strategy_name: str, s: dict, args) -> dict:
                                 lr_head=lr_head)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=max(1, stage2_epochs))
-    model, l2, a2, best_loss = train_classifier_v2(
+    model, l2, a2, best_loss = train_classifier(
         model, criterion, optimizer, scheduler,
         dataloaders=dataloaders, dataset_sizes=dataset_sizes,
+        label_to_idx=AGE_TO_IDX,
         num_epochs=stage2_epochs, device=TORCH_DEVICE,
         checkpoint_path=checkpoint_path,
         initial_best_loss=best_loss,
@@ -214,10 +216,12 @@ def run_training(data_key: str, strategy_name: str, s: dict, args) -> dict:
     for phase, key in (('train', 'train_infer'), ('heldout', 'heldout')):
         pred_loader = DataLoader(datasets[key], batch_size=args.batch_size,
                                  shuffle=False, num_workers=4)
-        preds_df = predict_phase(model, pred_loader, TORCH_DEVICE, desc=phase)
+        preds_df = predict_classifier(model, pred_loader, TORCH_DEVICE,
+                                      class_names=CLASS_NAMES, desc=phase)
         preds_df.to_csv(model_dir/f'{model_name}_{phase}_preds.csv', index=False)
         preds_by_phase[phase] = preds_df
-    plot_predictions(preds_by_phase, model_dir/f'{model_name}_preds.png')
+    plot_classifier_predictions(preds_by_phase, model_dir/f'{model_name}_preds.png',
+                                CLASS_NAMES)
 
     row = {
         'model_name': model_name,
@@ -239,12 +243,12 @@ def run_training(data_key: str, strategy_name: str, s: dict, args) -> dict:
         'final_val_acc': accs['val'][-1],
         'best_train_acc': max(accs['train']),
         'best_val_acc': max(accs['val']),
-        'heldout_acc': preds_by_phase['heldout']['correct'].mean(),
+        'heldout_acc': accuracy(preds_by_phase['heldout']),
         'stopped_epoch': stopped_epoch,
         'train_time_s': round(elapsed, 1),
         'weights_file': weights_file,
     }
-    append_report(row, args.report)
+    append_report(row, args.report, REPORT_COLUMNS)
     return row
 
 
@@ -260,9 +264,9 @@ def main():
         print(f'  {name}: {s}')
 
     if args.debug:
-        datasets = args.datasets or list(DATASET_CONFIGS)[:1]
+        datasets = args.datasets or list(DATASET_KEYS)[:1]
     else:
-        datasets = args.datasets or list(DATASET_CONFIGS)
+        datasets = args.datasets or ['datav5', 'datav6']
 
     results = []
     for data_key in datasets:

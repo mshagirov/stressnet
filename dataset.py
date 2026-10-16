@@ -1,3 +1,15 @@
+'''
+Datasets for stiffness regression and age / stiffness-category classification.
+
+Every dataset reads its labels from an `.xlsx` file (columns `Stiffness` and
+`Image`) and its images from one directory per channel; a sample is a float
+tensor stacking one 16-bit TIFF per channel, scaled to [0, 1].
+
+`StiffnessDataset` is the base class and returns `(image, target)`. The
+`Validation*` variants additionally return the first channel's file name,
+giving `(image, target, fname)`, which is used for per-sample reporting.
+'''
+
 from pathlib import Path
 
 import numpy as np
@@ -9,11 +21,19 @@ from torch.utils.data import Dataset
 
 
 def read_16uint_tiff(img_path:Path|str, scale_with_percentile:None|float=None):
+    '''
+    Read a 16-bit TIFF into a float32 tensor.
+
+    img_path: path of the TIFF to read
+    scale_with_percentile: if given (e.g. 99), divide the image by that
+                           percentile of its own intensities before clipping
+                           to [0, 1]; None leaves the raw /65535 scaling
+    '''
     img = Image.open(img_path)
     
     img_np = np.array(img, dtype=np.float32)/65535
     
-    if scale_with_percentile!=None:
+    if scale_with_percentile is not None:
         img_np /= np.percentile(img_np, scale_with_percentile)
 
     img_np = np.clip(img_np, 0, 1)
@@ -29,6 +49,15 @@ def _load_stiffness_thresholds(path):
 
 
 class StiffnessDataset(Dataset):
+    '''
+    Base dataset: multi-channel image -> normalised stiffness.
+
+    Returns `(image, target)`, where `image` is a `(C, H, W)` float tensor and
+    `target` is a single-element float32 tensor holding the (optionally
+    transformed) stiffness. When only two channels are configured a zero
+    third plane is appended so that every sample has 3 channels.
+    '''
+
     def __init__(self,
                  annotations_file:str,
                  root_dir:Path|str,
@@ -59,6 +88,12 @@ class StiffnessDataset(Dataset):
             return s
         
         def extract_location(s):
+            '''
+            Map the sample's location suffix (`LV`/`IVS`/`RV`) to an id.
+
+            The stem before the first `_` is inspected; stems with no known
+            suffix yield `None`.
+            '''
             stem = s.split('_')[0]
             if stem.endswith('LV'):
                 return 0
@@ -66,6 +101,7 @@ class StiffnessDataset(Dataset):
                 return 1
             if stem.endswith('RV'):
                 return 2
+            return None  # unrecognised sample stem
 
         root_dir = Path(root_dir)
         assert (root_dir/annotations_file).exists(), f"Could not find the {(root_dir/annotations_file)}"
@@ -76,7 +112,9 @@ class StiffnessDataset(Dataset):
         labels_df['Location'] =  labels_df['Image'].apply(extract_location)
         
         for ch, prefix in zip(ch_names,ch_name_prefix):
-            labels_df[ch] = labels_df['Image'].apply(lambda x: prefix + x +'.tif')
+            # `prefix` is bound via a default argument so that the closure does
+            # not pick up the value of the loop variable from a later iteration
+            labels_df[ch] = labels_df['Image'].apply(lambda x, prefix=prefix: prefix + x +'.tif')
 
         cols = ['Stiffness']
 
@@ -130,6 +168,8 @@ class StiffnessDataset(Dataset):
 
 
 class ValidationDataset(StiffnessDataset):
+    '''`StiffnessDataset` for inference: returns `(image, target, fname)`.
+    '''
     def __getitem__(self, idx):
         sample_ch1_name = str(self.img_labels[self.img_channels].iloc[idx, 0])
         stiffness = self.img_labels['Stiffness'].iloc[idx]
@@ -157,8 +197,15 @@ class ValidationDataset(StiffnessDataset):
 
 
 class StiffnessDatasetAge(StiffnessDataset):
+    '''
+    `StiffnessDataset` that encodes age in the third channel.
+
+    Two-channel data gets a third plane of zeros for young ('Y') samples and
+    of ones for adult ('A') samples, so age is available to the network
+    without changing the target.
+    '''
+
     def __getitem__(self, idx):
-        #sample_ch1_name = str(self.img_labels[self.img_channels].iloc[idx, 0])
         stiffness = self.img_labels['Stiffness'].iloc[idx]
         age = self.img_labels['Group'].iloc[idx]
         
@@ -187,6 +234,8 @@ class StiffnessDatasetAge(StiffnessDataset):
 
 
 class ValidationDatasetAge(StiffnessDataset):
+    '''Inference variant of `StiffnessDatasetAge`: `(image, target, fname)`.
+    '''
     def __getitem__(self, idx):
         sample_ch1_name = str(self.img_labels[self.img_channels].iloc[idx, 0])
         stiffness = self.img_labels['Stiffness'].iloc[idx]
@@ -216,6 +265,13 @@ class ValidationDatasetAge(StiffnessDataset):
         return image, torch.tensor([stiffness], dtype=torch.float32), sample_ch1_name
 
 class StiffnessDatasetAgeLoc(StiffnessDataset):
+    '''
+    `StiffnessDataset` that encodes age x location in the third channel.
+
+    The category value `Location + 3*(age == 'A')` is divided by
+    `max_age_loc_cat` and written into the third plane of two-channel data.
+    '''
+
     def __getitem__(self, idx):
         stiffness = self.img_labels['Stiffness'].iloc[idx]
         
@@ -245,6 +301,8 @@ class StiffnessDatasetAgeLoc(StiffnessDataset):
 
 
 class ValidationDatasetAgeLoc(StiffnessDataset):
+    '''Inference variant of `StiffnessDatasetAgeLoc`: `(image, target, fname)`.
+    '''
     def __getitem__(self, idx):
         sample_ch1_name = str(self.img_labels[self.img_channels].iloc[idx, 0])
         stiffness = self.img_labels['Stiffness'].iloc[idx]
@@ -275,6 +333,13 @@ class ValidationDatasetAgeLoc(StiffnessDataset):
 
 
 class StiffnessDatasetAgeLocNoNuc(StiffnessDataset):
+    '''
+    Nucleus-free variant encoding age and location in extra channels.
+
+    Only the non-Nucleus channels are read from disk; two constant planes
+    holding the normalised age and location are appended instead.
+    '''
+
     def __getitem__(self, idx):
         stiffness = self.img_labels['Stiffness'].iloc[idx]
         
@@ -305,6 +370,10 @@ class StiffnessDatasetAgeLocNoNuc(StiffnessDataset):
 
 
 class ValidationDatasetAgeLocNoNuc(StiffnessDataset):
+    '''Inference variant of `StiffnessDatasetAgeLocNoNuc`:
+    `(image, target, fname)`.
+    '''
+
     def __getitem__(self, idx):
         sample_ch1_name = str(self.img_labels[self.img_channels].iloc[idx, 0])
         stiffness = self.img_labels['Stiffness'].iloc[idx]
@@ -336,6 +405,15 @@ class ValidationDatasetAgeLocNoNuc(StiffnessDataset):
 
 
 class StiffnessDatasetWithActinAgeLoc(Dataset):
+    '''
+    Three-channel dataset returning `((image, age_loc, fname), target)`.
+
+    Unlike the `StiffnessDataset` hierarchy this class keeps age and location
+    as a separate `(2,)` float tensor (`age_loc`) instead of writing them into
+    the image, and always returns the file name; it feeds
+    `models.ResNet18WithAgeLoc`.
+    '''
+
     def __init__(self,
                  annotations_file:str,
                  root_dir:Path|str,
@@ -365,6 +443,13 @@ class StiffnessDatasetWithActinAgeLoc(Dataset):
             return s
         
         def extract_location(s):
+            '''
+            Map the sample's location suffix (`LV`/`IVS`/`RV`) to a value in
+            [0, 1] by dividing the location id (0/1/2) by `max_loc_val`.
+
+            The stem before the first `_` is inspected; stems with no known
+            suffix yield `None`.
+            '''
             max_loc_val = 2
             stem = s.split('_')[0]
             if stem.endswith('LV'):
@@ -373,6 +458,7 @@ class StiffnessDatasetWithActinAgeLoc(Dataset):
                 return 1/max_loc_val
             if stem.endswith('RV'):
                 return 2/max_loc_val
+            return None  # unrecognised sample stem
 
         root_dir = Path(root_dir)
         assert (root_dir/annotations_file).exists(), f"Could not find the {(root_dir/annotations_file)}"
@@ -383,7 +469,9 @@ class StiffnessDatasetWithActinAgeLoc(Dataset):
         labels_df['Age'] = (labels_df['Group'] == 'A').astype(float) # as a boolean
         
         for ch, prefix in zip(ch_names,ch_name_prefix):
-            labels_df[ch] = labels_df['Image'].apply(lambda x: prefix + x +'.tif')
+            # `prefix` is bound via a default argument so that the closure does
+            # not pick up the value of the loop variable from a later iteration
+            labels_df[ch] = labels_df['Image'].apply(lambda x, prefix=prefix: prefix + x +'.tif')
 
         cols = ['Stiffness']
 
@@ -535,7 +623,7 @@ class AgeStiffnessDataset(AgeDataset):
         stiffness = self.img_labels['Stiffness'].to_numpy()
         levels = np.where([s >= self.thresholds[g] for s, g in zip(stiffness, groups)],
                           'high', 'low')
-        self.img_labels['Category'] = [f'{g}_{l}' for g, l in zip(groups, levels)]
+        self.img_labels['Category'] = [f'{g}_{lvl}' for g, lvl in zip(groups, levels)]
 
     def __getitem__(self, idx):
         categorised_stiffness = self.img_labels['Category'].iloc[idx]

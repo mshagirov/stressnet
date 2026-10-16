@@ -7,7 +7,17 @@ __pycache__
 
 plan.md
 
+# Site-specific / private data — never commit these
+HELP.md
+site_config.yaml
+
+# Run artifacts
 *.out
 *.log
+*.pt
 *report.csv
 *report_*.csv
+out/
+
+# Tooling caches
+.ruff_cache/

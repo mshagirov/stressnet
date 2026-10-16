@@ -1,7 +1,7 @@
 '''Train a stiffness regression model (ResNet18, scalar output).
 
 Datasets (--dataset):
-  datav5  : Faris_Data_for_ML_v5, 458x458 tiles, Xv1 transforms (im_dim 256)
+  datav5  : v5 tiles, Xv1 transforms (im_dim 256)
   datav5.2: v5.2-gridaveraged, 1376x1376 3x3 grids, Xv4 transforms
             (im_dim_v4 = floor(1376/sqrt(2)) = 972)
 
@@ -12,9 +12,10 @@ Recipe (previous best gradual-unfreeze strategy):
   - AdamW wd 1e-4, cosine annealing per stage, batch 16, seed 42
   - val phase = Prediction_Data (best-val checkpointing selects on it)
 
-Outputs land in /mnt/data/faris-data/saved_models/stiffness/<run_name>/ with
-best-val weights, loss curves and a two-panel predicted-vs-true scatter
-(train / val) with a dashed 1-to-1 line.
+Outputs land in <save_root>/stiffness/<run_name>/ with best-val weights, loss
+curves and a two-panel predicted-vs-true scatter (train / val) with a dashed
+1-to-1 line. Dataset roots, the stiffness column and save_root come from
+stressnet.config (site_config.yaml / environment variables); see HELP.md.
 
 Usage (from inside stressnet-tests/):
     uv run python train_stiffness_regression.py --dataset datav5
@@ -22,7 +23,6 @@ Usage (from inside stressnet-tests/):
 '''
 
 import argparse
-import csv
 import sys
 import time
 from datetime import UTC, datetime
@@ -37,29 +37,29 @@ import pandas as pd
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 
-from dataset import StiffnessDataset
 from models import TORCH_DEVICE, resnet18
-from train_age_classifier_v2 import build_optimizer, set_backbone_trainable
+from stressnet.config import dataset_config, save_root
+from stressnet.data import build_datasets_regression
+from stressnet.engine import build_optimizer, set_backbone_trainable
+from stressnet.metrics import predict_regression
+from stressnet.plots import plot_regression_predictions
+from stressnet.reporting import append_report
 from trainer import train_model
-from transforms import data_transforms, data_transforms_v4, stiffness_transform
+from transforms import data_transforms, data_transforms_v4
 
-DATASET_CONFIGS = {
+# Per-dataset transforms: datav5 = Xv1 (tiles), datav5.2 = Xv4 (grids).
+# Roots and the target column are resolved from stressnet.config at run time.
+DATASET_TRANSFORMS = {
     'datav5': {
-        'root': Path('/mnt/data/faris-data/datasets/Faris_Data_for_ML_v5'),
-        'stiffness_col': 'Stiffness',
         'transforms': data_transforms,
         'xv_tag': 'Xv1',
     },
     'datav5.2': {
-        'root': Path('/mnt/data/faris-data/datasets/v5.2-gridaveraged'),
-        'stiffness_col': 'Mean stiffness',
         'transforms': data_transforms_v4,
         'xv_tag': 'Xv4',
     },
 }
-SAVE_ROOT = Path('/mnt/data/faris-data/saved_models/stiffness')
 
 STRATEGY = {
     'lr_head': 1e-3, 'lr_backbone': 1e-5, 'weight_decay': 1e-4,
@@ -74,7 +74,7 @@ REPORT_COLUMNS = ['model_name', 'dataset', 'transform', 'epochs', 'freeze_epochs
 def parse_args(args):
     parser = argparse.ArgumentParser(
         description='Stiffness regression (gradual unfreeze fz15/45, Yv1)')
-    parser.add_argument('--dataset', choices=list(DATASET_CONFIGS),
+    parser.add_argument('--dataset', choices=list(DATASET_TRANSFORMS),
                         default='datav5.2')
     parser.add_argument('--epochs', type=int, default=STRATEGY['epochs'])
     parser.add_argument('--freeze-epochs', type=int, default=STRATEGY['freeze_epochs'])
@@ -86,68 +86,19 @@ def parse_args(args):
     return parser.parse_args(args)
 
 
-def build_datasets(cfg: dict, transforms_dict):
-    train_ds = StiffnessDataset(
-        'Stiffness_Data_Training.xlsx', cfg['root']/'Training_Data',
-        ch_dir_suffix='_Train', stiffness_col=cfg['stiffness_col'],
-        transform=transforms_dict['train'], target_transform=stiffness_transform)
-    val_ds = StiffnessDataset(
-        'Stiffness_Data_Prediction.xlsx', cfg['root']/'Prediction_Data',
-        ch_dir_suffix='_Prediction', stiffness_col=cfg['stiffness_col'],
-        transform=transforms_dict['val'], target_transform=stiffness_transform)
-    return {'train': train_ds, 'val': val_ds}
-
-
-def predict_phase(model: nn.Module, loader: DataLoader, device: torch.device,
-                  desc: str = '') -> dict:
-    model.eval()
-    y_tgt, y_pred = [], []
-    with torch.inference_mode():
-        for x, y in tqdm(loader, desc=desc):
-            y_pred.append(model(x.to(device)).cpu().numpy())
-            y_tgt.append(y.numpy())
-    return {'y_tgt': np.concatenate(y_tgt), 'y_pred': np.concatenate(y_pred)}
-
-
-def plot_predictions(preds_by_phase: dict, save_path: Path):
-    fig, axs = plt.subplots(1, len(preds_by_phase), figsize=[7*len(preds_by_phase), 6],
-                            squeeze=False)
-    for ax, (phase, res) in zip(axs.ravel(), preds_by_phase.items()):
-        ax.scatter(res['y_tgt'], res['y_pred'], label=phase, alpha=.5)
-        ax.plot([-1.25, 1.25], [-1.25, 1.25], '--', c='r', alpha=.25)
-        ax.axis([-1.25, 1.25, -1.25, 1.25])
-        ax.set_title(phase)
-        ax.set_ylabel('$log(E_{pred})$ [a.u.]')
-        ax.set_xlabel('$log(E_{tgt})$ [a.u.]')
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=150)
-    plt.close(fig)
-    print(f'Saved: {save_path}')
-
-
-def append_report(row: dict, report_path: Path):
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    file_exists = report_path.exists()
-    with report_path.open('a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=REPORT_COLUMNS)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
-    print(f'Report row appended: {report_path}')
-
-
 def run_training(data_key: str, s: dict, args) -> dict:
-    cfg = DATASET_CONFIGS[data_key]
+    spec = DATASET_TRANSFORMS[data_key]
+    cfg = dataset_config(data_key)
     stamp = datetime.now(tz=UTC).strftime('%d%m%y-%H%M%S')
-    model_name = (f'resnet18_{data_key}_{cfg["xv_tag"]}_Yv1_gradual_unfreeze'
+    model_name = (f'resnet18_{data_key}_{spec["xv_tag"]}_Yv1_gradual_unfreeze'
                   f'_fz{s["freeze_epochs"]:02d}_{stamp}')
     if args.debug:
         model_name += '_debug'
-    model_dir = SAVE_ROOT/model_name
+    model_dir = save_root()/'stiffness'/model_name
     model_dir.mkdir(parents=True, exist_ok=True)
 
     print(f'\n=== {model_name} ===')
-    datasets = build_datasets(cfg, cfg['transforms'])
+    datasets = build_datasets_regression(cfg, spec['transforms'])
     if args.debug:
         datasets['train'] = torch.utils.data.Subset(datasets['train'], range(8))
         datasets['val'] = torch.utils.data.Subset(datasets['val'], range(4))
@@ -222,13 +173,13 @@ def run_training(data_key: str, s: dict, args) -> dict:
     print(f'Saved: {model_dir/f"{model_name}_loss.png"}')
 
     # Final predictions with inference transforms (full datasets, not subsets).
-    full_datasets = build_datasets(
-        cfg, {'train': cfg['transforms']['val'], 'val': cfg['transforms']['val']})
+    full_datasets = build_datasets_regression(
+        cfg, {'train': spec['transforms']['val'], 'val': spec['transforms']['val']})
     preds_by_phase = {}
     for phase in ('train', 'val'):
         pred_loader = DataLoader(full_datasets[phase], batch_size=args.batch_size,
                                  shuffle=False, num_workers=4)
-        res = predict_phase(model, pred_loader, TORCH_DEVICE, desc=phase)
+        res = predict_regression(model, pred_loader, TORCH_DEVICE, desc=phase)
         preds_by_phase[phase] = res
         pd.DataFrame({
             'Image': full_datasets[phase].img_labels['Nucleus'].tolist(),
@@ -236,12 +187,12 @@ def run_training(data_key: str, s: dict, args) -> dict:
             'true_kPa': np.exp(res['y_tgt'].ravel()*3.0 + 1.85),
             'pred_kPa': np.exp(res['y_pred'].ravel()*3.0 + 1.85),
         }).to_csv(model_dir/f'{model_name}_{phase}_preds.csv', index=False)
-    plot_predictions(preds_by_phase, model_dir/f'{model_name}_preds.png')
+    plot_regression_predictions(preds_by_phase, model_dir/f'{model_name}_preds.png')
 
     row = {
         'model_name': model_name,
         'dataset': data_key,
-        'transform': cfg['xv_tag'],
+        'transform': spec['xv_tag'],
         'epochs': s['epochs'],
         'freeze_epochs': s['freeze_epochs'],
         'batch_size': args.batch_size,
@@ -253,7 +204,7 @@ def run_training(data_key: str, s: dict, args) -> dict:
         'train_time_s': round(elapsed, 1),
         'weights_file': weights_file,
     }
-    append_report(row, args.report)
+    append_report(row, args.report, REPORT_COLUMNS)
     return row
 
 

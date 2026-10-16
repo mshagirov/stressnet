@@ -3,6 +3,8 @@ name = "stressnet"
 version = "0.1.0"
 description = "Fine-tuning CNN for Mechanical Stress Prediction"
 readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
 requires-python = ">=3.11"
 dependencies = [
     "matplotlib==3.10.7",
@@ -19,3 +21,16 @@ dependencies = [
 dev = [
     "ruff>=0.16.4",
 ]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+# E501 (line-too-long): the existing code base has a few long docstring and
+# comment lines where reflowing would not improve readability.
+# B905 (zip-without-explicit-strict): the zipped sequences are always the same
+# length here, and passing strict=True would turn a silent mismatch into a
+# runtime error, i.e. change behaviour.
+ignore = ["E501", "B905"]

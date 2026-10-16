@@ -1,3 +1,11 @@
+'''
+Models used for stiffness regression and classification.
+
+The module probes for CUDA once at import time and exposes the resulting
+`torch.device` as `TORCH_DEVICE`, which is the default device of every model
+builder and predictor here.
+'''
+
 from pathlib import Path
 
 import torch
@@ -5,13 +13,14 @@ from torch import nn
 from torchvision.models import ResNet18_Weights
 from torchvision.models import resnet18 as pt_resnet18
 
-
 if torch.cuda.is_available():
     TORCH_DEVICE = torch.device("cuda")
 else:
     TORCH_DEVICE = torch.device("cpu")
 
+
 def get_predict_func(m:nn.Module, device:torch.device=TORCH_DEVICE):
+    '''Return an inference-mode callable that runs `m` on `device`.'''
     @torch.inference_mode()
     def predict(X_in:torch.Tensor):
         assert torch.is_inference_mode_enabled()
@@ -20,13 +29,19 @@ def get_predict_func(m:nn.Module, device:torch.device=TORCH_DEVICE):
     return predict
 
 
-def fc_layers(in_features:int, out_features=1, hidden_layers=[], p=0) -> nn.Module:
+def fc_layers(in_features:int, out_features=1, hidden_layers=[], p=0) -> nn.Module:  # noqa: B006
     '''
     Generates and returns a torch.nn.Sequential Module (Neural Net) with fully-connected layers
     
     in_features  : number of input features to the fully-connected layers
+    out_features : number of outputs of the final fully-connected layer
     hidden_layers: list of int that represent number of neurons in hidden
                    layers
+    p            : dropout probability inserted between hidden layers
+                   (disabled when p == 0)
+
+    The `hidden_layers=[]` default is never mutated, so the shared mutable
+    default is harmless and kept to preserve the existing signature.
 
     For a single fully-connected layer use Linear(in_features, out_features) from torch.nn, e.g.:
 
@@ -52,11 +67,13 @@ def resnet18(weights_path:str|Path|None = None,
              pretrained:bool = True,
              device:torch.device = TORCH_DEVICE) -> nn.Module:
     '''
-    The last FC-layers consist of torch.nn.nn.Linear Module
+    torchvision ResNet18 whose last FC layer is a single `nn.Linear(512, 1)`
 
     weights_path: optional path to fine-tuned weights (fc = Linear(512, 1));
                   when None a freshly initialised (optionally ImageNet-
                   pretrained) model is returned without loading a checkpoint.
+    pretrained  : load ImageNet weights from ResNet18_Weights.DEFAULT
+    device      : device onto which a loaded checkpoint is mapped
     '''
     weights = ResNet18_Weights.DEFAULT if pretrained else None
     model_ft = pt_resnet18(weights=weights)
@@ -71,7 +88,14 @@ def resnet18(weights_path:str|Path|None = None,
 
 def resnet18_seq(weights_path:str|Path, device:torch.device = TORCH_DEVICE) -> nn.Module:
     '''
-    The last FC-layers consist of torch.nn.Sequential Module from fc_layers() function above
+    ResNet18 whose FC head is the `nn.Sequential` built by `fc_layers()`
+
+    The head is `fc_layers(512, hidden_layers=[])`, i.e. a Sequential wrapping
+    a single `nn.Linear(512, 1)`; use this loader for checkpoints saved from
+    such a head and `resnet18()` for a plain `nn.Linear` head.
+
+    weights_path: path to the fine-tuned weights to load
+    device      : device onto which the checkpoint is mapped
     '''
     
     model_ft = pt_resnet18()
@@ -86,6 +110,12 @@ def resnet18_seq(weights_path:str|Path, device:torch.device = TORCH_DEVICE) -> n
 
 class ResNet18WithAgeLoc(nn.Module):
     '''
+    ResNet18 image branch fused with a small MLP branch over (age, location).
+
+    The CNN's penultimate features (512 dims) are concatenated with the MLP's
+    `embed_dim_mlp`-dim output and mapped to `num_classes` outputs by a single
+    `nn.Linear` head.
+
     Usage:
 
     ```
@@ -114,7 +144,7 @@ class ResNet18WithAgeLoc(nn.Module):
         pretrained: load pretrained wights from torchvision.models.ResNet18_Weights
         '''
 
-        super(ResNet18WithAgeLoc, self).__init__()
+        super().__init__()
         
         weights = ResNet18_Weights.DEFAULT if pretrained else None
         self.cnn = pt_resnet18(weights=weights)

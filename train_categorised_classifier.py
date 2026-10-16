@@ -9,9 +9,12 @@ lr_backbone), AdamW wd 1e-4, cosine annealing, patience 10, and NO label
 smoothing / MixUp / dropout. The internal train/val split is stratified by
 age Group.
 
-Reuses datasets, loaders, optimizer and plotting from the age-classifier v2
-modules; only the prediction/plotting helpers and the report schema are
+Datasets, loaders, optimizer, trainer, predictions and plotting come from the
+shared `stressnet` package; only the run parameters and the report schema are
 specialized for the 2 categories.
+
+Dataset locations, save locations and the label-file layout come from
+stressnet.config (site_config.yaml / environment variables); see HELP.md.
 
 Usage (from inside stressnet-tests/):
     uv run python train_categorised_classifier.py          # datav5, best config
@@ -19,7 +22,6 @@ Usage (from inside stressnet-tests/):
 '''
 
 import argparse
-import csv
 import sys
 import time
 from collections import Counter
@@ -27,38 +29,29 @@ from datetime import UTC, datetime
 from functools import partial
 from pathlib import Path
 
-import matplotlib
-
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torch
 import yaml
 from torch import nn
 from torch.utils.data import DataLoader, Subset
-from tqdm import tqdm
 
-from classifier_trainer_categorised import (
-    CATEGORISED_TO_IDX,
-    train_classifier_categorised,
-)
 from classifiers import resnet18_classifier, resnet34_classifier
 from dataset import CategorisedStiffnessDataset
 from models import TORCH_DEVICE
-from train_age_classifier_v2 import (
-    DATASET_CONFIGS,
-    REPORT_COLUMNS,
-    SAVE_ROOT,
-    TRAIN_TRANSFORMS,
-    build_datasets,
-    build_loaders,
+from stressnet.config import DATASET_KEYS, dataset_config, save_root
+from stressnet.data import TRAIN_TRANSFORMS, build_datasets, build_loaders
+from stressnet.engine import (
+    CATEGORISED_TO_IDX,
     build_optimizer,
-    plot_history,
     set_backbone_trainable,
+    train_classifier,
 )
+from stressnet.metrics import accuracy, macro_accuracy, predict_classifier
+from stressnet.plots import plot_classifier_predictions, plot_history
+from stressnet.reporting import REPORT_COLUMNS, append_report
 
-CATEGORY_ORDER = ['low', 'high']
+CATEGORY_ORDER = list(CATEGORISED_TO_IDX)
 CLASSIFIERS = {
     'resnet18': resnet18_classifier,
     'resnet34': resnet34_classifier,
@@ -81,7 +74,7 @@ def parse_args(args):
     parser = argparse.ArgumentParser(
         description='Train 2-way categorised-stiffness classifiers '
                     '(gradual_unfreeze, no ls/mixup/dropout)')
-    parser.add_argument('--datasets', nargs='+', choices=list(DATASET_CONFIGS),
+    parser.add_argument('--datasets', nargs='+', choices=list(DATASET_KEYS),
                         default=None)
     parser.add_argument('--arch', choices=list(CLASSIFIERS), default='resnet18')
     parser.add_argument('--epochs', type=int, default=STRATEGY['epochs'])
@@ -104,58 +97,6 @@ def parse_args(args):
     parser.add_argument('--debug', action='store_true',
                         help='smoke test: 1 dataset, 2 epochs, small subset')
     return parser.parse_args(args)
-
-
-def predict_phase_categorised(model: nn.Module, loader: DataLoader,
-                              device: torch.device, desc: str = '') -> pd.DataFrame:
-    model.eval()
-    rows = []
-    with torch.inference_mode():
-        for images, categories, fnames in tqdm(loader, desc=desc):
-            probs = torch.softmax(model(images.to(device)), dim=1).cpu().numpy()
-            for fname, cat, p in zip(fnames, categories, probs):
-                y_true = CATEGORISED_TO_IDX[cat]
-                pred = int(p.argmax())
-                rows.append({
-                    'Image': fname, 'category': cat, 'y_true': y_true,
-                    'p_low': p[0], 'p_high': p[1],
-                    'p_pred': p[pred], 'pred': pred,
-                    'correct': int(y_true == pred),
-                })
-    return pd.DataFrame(rows)
-
-
-def plot_predictions_categorised(preds_by_phase: dict, save_path: Path):
-    fig, axs = plt.subplots(1, len(preds_by_phase),
-                            figsize=[7*len(preds_by_phase), 6], squeeze=False)
-    rng = np.random.default_rng(42)
-    for ax, (phase, df) in zip(axs.ravel(), preds_by_phase.items()):
-        jitter = rng.uniform(-0.04, 0.04, size=len(df))
-        colors = np.where(df['correct'].astype(bool), 'tab:green', 'tab:red')
-        ax.scatter(df['y_true'] + jitter, df['p_pred'], c=colors, alpha=.5, s=18)
-        ax.axhline(0.5, ls='--', c='r', alpha=.4)
-        acc = df['correct'].mean()
-        ax.set_title(f'{phase} (acc={acc:.3f})')
-        ax.set_xlim(-0.25, 1.25)
-        ax.set_ylim(-0.05, 1.05)
-        ax.set_xticks(range(2))
-        ax.set_xticklabels(CATEGORY_ORDER, rotation=30)
-        ax.set_ylabel('P(predicted class)')
-    fig.tight_layout()
-    fig.savefig(save_path, dpi=150)
-    plt.close(fig)
-    print(f'Saved: {save_path}')
-
-
-def append_report_categorised(row: dict, report_path: Path):
-    report_path.parent.mkdir(parents=True, exist_ok=True)
-    file_exists = report_path.exists()
-    with report_path.open('a', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=CATEGORISED_REPORT_COLUMNS)
-        if not file_exists:
-            writer.writeheader()
-        writer.writerow(row)
-    print(f'Report row appended: {report_path}')
 
 
 def balance_subsets(datasets: dict, seed: int = 42) -> dict:
@@ -219,7 +160,7 @@ def write_train_params(path: Path, data_key: str, s: dict, args, run_dt: str):
 def run_training(data_key: str, s: dict, args) -> dict:
     run_dt = datetime.now(UTC).astimezone().strftime('%d%m%y-%H%M%S')
     model_name = f'{args.arch}_{data_key}_{DATASET_TASK}_{run_dt}'
-    model_dir = SAVE_ROOT/model_name
+    model_dir = save_root()/model_name
     model_dir.mkdir(parents=True, exist_ok=True)
 
     print(f'\n=== {model_name} ===')
@@ -227,7 +168,7 @@ def run_training(data_key: str, s: dict, args) -> dict:
     if args.stress_threshold is not None:
         dataset_cls = partial(CategorisedStiffnessDataset,
                               stress_threshold=args.stress_threshold)
-    datasets = build_datasets(DATASET_CONFIGS[data_key],
+    datasets = build_datasets(dataset_config(data_key),
                               TRAIN_TRANSFORMS[s['transform']], args.val_frac,
                               dataset_cls=dataset_cls,
                               stratify_col=STRATIFY_COL)
@@ -263,9 +204,10 @@ def run_training(data_key: str, s: dict, args) -> dict:
     optimizer = build_optimizer(model, s, backbone_trainable=False)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=freeze_epochs)
-    model, l1, a1, best_loss = train_classifier_categorised(
+    model, l1, a1, best_loss = train_classifier(
         model, criterion, optimizer, scheduler,
         dataloaders=dataloaders, dataset_sizes=dataset_sizes,
+        label_to_idx=CATEGORISED_TO_IDX,
         num_epochs=freeze_epochs, device=TORCH_DEVICE,
         checkpoint_path=trainer_ckpt,
         early_stopping_patience=None,
@@ -287,9 +229,10 @@ def run_training(data_key: str, s: dict, args) -> dict:
                                 lr_head=lr_head)
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=max(1, stage2_epochs))
-    model, l2, a2, best_loss = train_classifier_categorised(
+    model, l2, a2, best_loss = train_classifier(
         model, criterion, optimizer, scheduler,
         dataloaders=dataloaders, dataset_sizes=dataset_sizes,
+        label_to_idx=CATEGORISED_TO_IDX,
         num_epochs=stage2_epochs, device=TORCH_DEVICE,
         checkpoint_path=trainer_ckpt,
         initial_best_loss=best_loss,
@@ -319,10 +262,12 @@ def run_training(data_key: str, s: dict, args) -> dict:
     for phase, key in (('train', 'train_infer'), ('heldout', 'heldout')):
         pred_loader = DataLoader(datasets[key], batch_size=args.batch_size,
                                  shuffle=False, num_workers=4)
-        preds_df = predict_phase_categorised(model, pred_loader, TORCH_DEVICE, desc=phase)
+        preds_df = predict_classifier(model, pred_loader, TORCH_DEVICE,
+                                      class_names=CATEGORY_ORDER, desc=phase)
         preds_df.to_csv(model_dir/f'{model_name}_{phase}_preds.csv', index=False)
         preds_by_phase[phase] = preds_df
-    plot_predictions_categorised(preds_by_phase, model_dir/f'{model_name}_preds.png')
+    plot_classifier_predictions(preds_by_phase, model_dir/f'{model_name}_preds.png',
+                                CATEGORY_ORDER)
 
     row = {
         'model_name': model_name,
@@ -344,14 +289,14 @@ def run_training(data_key: str, s: dict, args) -> dict:
         'final_val_acc': accs['val'][-1],
         'best_train_acc': max(accs['train']),
         'best_val_acc': max(accs['val']),
-        'heldout_acc': preds_by_phase['heldout']['correct'].mean(),
+        'heldout_acc': accuracy(preds_by_phase['heldout']),
         'stopped_epoch': stopped_epoch,
         'train_time_s': round(elapsed, 1),
         'weights_file': weights_file,
     }
-    heldout = preds_by_phase['heldout']
-    row['heldout_macro_acc'] = heldout.groupby('category')['correct'].mean().mean()
-    append_report_categorised(row, args.report)
+    row['heldout_macro_acc'] = macro_accuracy(preds_by_phase['heldout'],
+                                              len(CATEGORY_ORDER))
+    append_report(row, args.report, CATEGORISED_REPORT_COLUMNS)
     return row
 
 
@@ -366,7 +311,7 @@ def main():
     s['freeze_epochs'] = args.freeze_epochs
 
     if args.debug:
-        datasets = args.datasets or list(DATASET_CONFIGS)[:1]
+        datasets = args.datasets or list(DATASET_KEYS)[:1]
     else:
         datasets = args.datasets or ['datav5']
 

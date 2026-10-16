@@ -1,3 +1,23 @@
+'''
+Image (X) and target (Y) transforms.
+
+Naming follows the experiment versions used by the training scripts:
+
+Xv1 `data_transforms`          : 256px centre crop, flips + full rotation, resize to 224
+Xv2 `data_transforms_v2`       : same as Xv1 but with a 96px crop (tiles)
+Xv3 `data_transforms_v3`       : like Xv2 without the final resize to 224
+Xv4 `data_transforms_v4`       : strong augmentation for small training sets
+                                 (RandomResizedCrop, ColorJitter, ElasticTransform,
+                                 `AddGaussianNoise`); built for 1376px grid images
+
+Yv1 `stiffness_transform`      : log, then (x - 1.85) / 3.0  (== `stiffness_norm_v1`)
+Yv2 `stiffness_norm_v2`        : (x - 0) / 25.0
+Yv3 `stiffness_norm_v3`        : log, then (x - 1.5) / 1.0
+
+`data_transforms*['val']` are the deterministic variants and are re-exported
+as `data_transforms_inference*`.
+'''
+
 import math
 
 import torch
@@ -5,18 +25,9 @@ from torchvision import transforms
 
 im_dim = 256
 im_dim_v2 = 96
-# v5.2-gridaveraged images are 1376x1376; largest square fully valid after
-# 360-degree rotation: floor(1376/sqrt(2)) = 972
+# Grid images are 1376x1376; the largest square fully valid after a
+# 360-degree rotation is floor(1376/sqrt(2)) = 972
 im_dim_v4 = 972
-
-# STIFMaps examples:
-# brightness_range = (.9,1.1), 
-# contrast_range = (.5,1.5), 
-# sharpness_range = (1.5,.67),
-#
-#   transforms.ColorJitter(brightness=brightness_range, contrast=contrast_range),
-#   transforms.RandomAdjustSharpness(sharpness_range[0], p=.5),
-#   transforms.RandomAdjustSharpness(sharpness_range[1], p=.5),
 
 data_transforms = {
     'train': transforms.Compose([
@@ -25,12 +36,10 @@ data_transforms = {
         transforms.RandomRotation(degrees=360),
         transforms.CenterCrop(im_dim),
         transforms.Resize(224),
-        # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ]),
     'val': transforms.Compose([
         transforms.CenterCrop(im_dim),
         transforms.Resize(224),
-        # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ]),
 }
 
@@ -41,12 +50,10 @@ data_transforms_v2 = {
         transforms.RandomRotation(degrees=360),
         transforms.CenterCrop(im_dim_v2),
         transforms.Resize(224),
-        # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ]),
     'val': transforms.Compose([
         transforms.CenterCrop(im_dim_v2),
         transforms.Resize(224),
-        # transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
     ]),
 }
 
@@ -81,7 +88,7 @@ class AddGaussianNoise:
     def __repr__(self):
         return f'{self.__class__.__name__}(std={self.std}, p={self.p})'
 
-# Xv4: stronger augmentation for small training sets (age classifier v2 runs)
+# Xv4: stronger augmentation for small training sets
 data_transforms_v4 = {
     'train': transforms.Compose([
         transforms.RandomHorizontalFlip(),
@@ -112,6 +119,7 @@ class TargetNormalise:
         stiffness_TF = TargetNormalise(4.5, 15.0)
         y_norm = stiffness_TF(y)
     '''
+
     def __init__(self, offset:float=0, scale:float=1):
         self.offset = offset
         self.scale = scale

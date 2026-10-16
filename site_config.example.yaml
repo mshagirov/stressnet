@@ -1,0 +1,51 @@
+# Site configuration for stressnet-tests.
+#
+# Copy this file to `site_config.yaml` (gitignored) and fill in YOUR paths.
+# Nothing in this example is site-specific, and `site_config.yaml` must never
+# be committed to the public repository.
+#
+#   cp site_config.example.yaml site_config.yaml
+#
+# Resolution order used by stressnet.config:
+#   1. environment variables STRESSNET_DATA_ROOT / STRESSNET_SAVE_ROOT
+#   2. this file (site_config.yaml at the repo root)
+#   3. a guided error pointing back here and at HELP.md
+#
+# See docs/configuration.md for the full reference and HELP.md for the
+# site-specific values of the machine you are on.
+
+# Directory that contains your dataset folders (one folder per logical dataset).
+data_root: /path/to/datasets
+
+# Directory where trained models / run artefacts are written. Each run gets
+# its own sub-directory named after the run (see docs/training.md).
+save_root: /path/to/saved_models
+
+# Logical dataset name -> physical folder + channel conventions.
+# The keys (`datav5`, `datav6`, `datav5.2`) are referenced by the training
+# scripts via --datasets; the `dir` values are the only mandatory fields.
+datasets:
+  datav5:
+    dir: my_v5_dataset            # folder inside data_root
+    channels: [Nucleus, Collagen]
+    channel_prefixes: [C1-, C2-]
+    stiffness_col: Stiffness
+  datav6:
+    dir: my_v6_dataset
+    channels: [Nucleus, Collagen, Actin]
+    channel_prefixes: [C1-, C2-, C3-]
+    stiffness_col: Stiffness
+  datav5.2:
+    dir: my_grid_averaged_dataset
+    channels: [Nucleus, Collagen]
+    channel_prefixes: [C1-, C2-]
+    stiffness_col: Mean stiffness  # column in the labels spreadsheet
+
+# Optional: label filenames and per-split directory names. These rarely change;
+# the defaults match the original dataset layout.
+# train_dir: Training_Data
+# train_suffix: _Train
+# train_labels: Stiffness_Data_Training.xlsx
+# prediction_dir: Prediction_Data
+# prediction_suffix: _Prediction
+# prediction_labels: Stiffness_Data_Prediction.xlsx

@@ -1,17 +1,20 @@
-'''Enhanced classifier trainer (v2).
+'''Training engine shared by every ``train_*.py`` driver.
 
-Extends classifier_trainer.train_classifier with:
-  - MixUp augmentation (train phase only),
-  - early stopping on val loss (patience),
-  - best-val weights written to a persistent checkpoint_path (survives across
-    calls, enabling two-stage progressive-unfreeze training),
-  - optional skipping of the final best-weights reload (load_best_at_end=False)
-    so a second training stage can continue from the last weights.
+``train_classifier`` is the single classifier trainer that used to be
+duplicated across ``classifier_trainer.py``, ``classifier_trainer_v2.py`` and
+its three near-twins. The behaviour is that of ``classifier_trainer_v2`` --
+MixUp (train phase only), early stopping on val loss, best-val weights written
+to a persistent ``checkpoint_path`` (so a second training stage can continue
+from them) and an optional final best-weights reload -- but the label strings
+that come out of the dataset are mapped to class indices by the ``label_to_idx``
+mapping the caller passes in.
 
 Label smoothing / weight decay are handled by the criterion / optimizer the
-caller passes in, e.g. nn.CrossEntropyLoss(label_smoothing=0.1) and
-torch.optim.AdamW(..., weight_decay=1e-4).
+caller passes in, e.g. ``nn.CrossEntropyLoss(label_smoothing=0.1)`` and
+``torch.optim.AdamW(..., weight_decay=1e-4)``.
 '''
+
+from __future__ import annotations
 
 import time
 from pathlib import Path
@@ -21,30 +24,68 @@ import torch
 
 from models import TORCH_DEVICE
 
+# Label-string -> class-index maps, one per classification task. The index
+# order also defines the class order used for prediction probabilities/plots.
 AGE_TO_IDX = {'young': 0, 'adult': 1}
+CATEGORISED_TO_IDX = {'low': 0, 'high': 1}
+STIFFNESS_TO_IDX = {
+    'adult_low': 0,
+    'adult_high': 1,
+    'young_low': 2,
+    'young_high': 3,
+}
+STIFFNESS_V2_TO_IDX = {
+    'young_low': 0,
+    'medium': 1,
+    'adult_high': 2,
+}
 
 
-def train_classifier_v2(
+def set_backbone_trainable(model: torch.nn.Module, trainable: bool):
+    '''Freeze/unfreeze every parameter except the ``fc`` head.'''
+    for name, p in model.named_parameters():
+        if not name.startswith('fc.'):
+            p.requires_grad = trainable
+
+
+def build_optimizer(model: torch.nn.Module, s: dict, backbone_trainable: bool,
+                    lr_head: float | None = None):
+    '''AdamW with differential LR for the head and (optionally) the backbone.
+
+    `s` carries ``lr_head``, ``lr_backbone`` and ``weight_decay``; passing
+    `lr_head` overrides the head LR (used for the head LR/10 second stage).
+    '''
+    groups = [{'params': list(model.fc.parameters()),
+               'lr': lr_head if lr_head is not None else s['lr_head']}]
+    if backbone_trainable:
+        backbone = [p for n, p in model.named_parameters() if not n.startswith('fc.')]
+        groups.append({'params': backbone, 'lr': s['lr_backbone']})
+    return torch.optim.AdamW(groups, weight_decay=s['weight_decay'])
+
+
+def train_classifier(
     model: torch.nn.Module,
     criterion,
     optimizer,
     scheduler,
     dataloaders,
     dataset_sizes,
+    label_to_idx: dict,
     num_epochs=25,
-    device=TORCH_DEVICE,
+    device=None,
     checkpoint_path=None,
     initial_best_loss=float('inf'),
     early_stopping_patience=None,
     mixup_alpha=0.0,
     load_best_at_end=True,
 ):
-    '''Train an age classifier with MixUp, early stopping and best-val checkpointing.
+    '''Train a classifier with MixUp, early stopping and best-val checkpointing.
 
-    Expects dataloaders built over AgeDataset, whose batches collate to
-    (images, age_strings, filenames); age strings are mapped through
-    AGE_TO_IDX ('young'=0, 'adult'=1) into class-index labels.
+    Expects dataloaders whose batches collate to (images, label_strings,
+    filenames); label strings are mapped through `label_to_idx` (e.g.
+    ``AGE_TO_IDX``, ``STIFFNESS_TO_IDX``) into class-index labels.
 
+    device                  : torch device; None means ``models.TORCH_DEVICE``
     checkpoint_path         : file where best-val state_dict is saved (persistent;
                               pass the same path across training stages)
     initial_best_loss       : best val loss from a previous stage (default inf)
@@ -56,8 +97,11 @@ def train_classifier_v2(
                               (set False for intermediate stages)
 
     Returns (model, losses, accs, best_loss) where losses/accs map
-    phase -> per-epoch history.
+    phase -> per-epoch history; accuracy is the fraction of correct samples
+    over the whole epoch.
     '''
+    if device is None:
+        device = TORCH_DEVICE
     model = model.to(device)
     since = time.time()
 
@@ -85,9 +129,10 @@ def train_classifier_v2(
             running_corrects = 0
 
             # Iterate over data.
-            for images, ages, _fnames in dataloaders[phase]:
+            for images, labels, _fnames in dataloaders[phase]:
                 batch_size = images.size(0)
-                labels = torch.tensor([AGE_TO_IDX[a] for a in ages], dtype=torch.long)
+                labels = torch.tensor([label_to_idx[label] for label in labels],
+                                      dtype=torch.long)
                 images = images.to(device)
                 labels = labels.to(device)
 
