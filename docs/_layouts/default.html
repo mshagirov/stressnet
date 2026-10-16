@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="{{ site.lang | default: 'en' }}">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ page.title | default: site.title }}{% if page.title %} | {{ site.title }}{% endif %}</title>
+  <meta name="description" content="{{ page.description | default: site.description | strip_newlines | escape }}">
+  <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
+  <style>
+    .site-tools { margin-top: 1rem; }
+    .site-tools .toc summary {
+      cursor: pointer;
+      display: inline-block;
+      padding: .4rem .9rem;
+      border: 1px solid #159957;
+      border-radius: 6px;
+      color: #159957;
+      font-weight: 600;
+      user-select: none;
+    }
+    .site-tools .toc[open] summary { background: #159957; color: #fff; }
+    .site-tools .toc ol { margin: .6rem 0 0; padding-left: 1.2rem; }
+    .site-tools .toc li { margin: .2rem 0; }
+    .site-search { position: relative; margin-top: .75rem; }
+    .site-search input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: .5rem .7rem;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      font-size: .95rem;
+    }
+    .search-results {
+      position: absolute;
+      z-index: 20;
+      left: 0;
+      right: 0;
+      margin: .35rem 0 0;
+      padding: .25rem 0;
+      list-style: none;
+      background: #fff;
+      border: 1px solid #d0d0d0;
+      border-radius: 6px;
+      box-shadow: 0 6px 18px rgba(0,0,0,.12);
+      max-height: 60vh;
+      overflow-y: auto;
+    }
+    .search-results li { margin: 0; }
+    .search-results a { display: block; padding: .5rem .7rem; text-decoration: none; color: inherit; }
+    .search-results a:hover { background: #f2f8f4; }
+    .search-results small { color: #666; }
+    .search-empty { padding: .5rem .7rem; color: #666; }
+    @media (min-width: 961px) {
+      .site-tools { position: sticky; top: 1rem; }
+    }
+  </style>
+</head>
+<body data-baseurl="{{ site.baseurl }}">
+  <div class="wrapper">
+    <header>
+      <h1><a href="{{ '/' | relative_url }}">{{ site.title }}</a></h1>
+      <p>{{ site.description }}</p>
+
+      <div class="site-tools">
+        <details class="toc">
+          <summary>Contents</summary>
+          <ol>
+            <li><a href="{{ '/' | relative_url }}">Home / Quick start</a></li>
+            <li><a href="{{ '/configuration.html' | relative_url }}">1. Configuration</a></li>
+            <li><a href="{{ '/data.html' | relative_url }}">2. Data</a></li>
+            <li><a href="{{ '/training.html' | relative_url }}">3. Training</a></li>
+            <li><a href="{{ '/models.html' | relative_url }}">4. Models &amp; fine-tuning</a></li>
+            <li><a href="{{ '/reproduction.html' | relative_url }}">5. Reproduction</a></li>
+            <li><a href="{{ '/architecture.html' | relative_url }}">6. Architecture</a></li>
+            <li><a href="{{ '/skills/README.html' | relative_url }}">Agent skills</a></li>
+          </ol>
+        </details>
+
+        <div class="site-search">
+          <label for="site-search-input" class="visually-hidden" style="position:absolute;left:-9999px;">Search the docs</label>
+          <input id="site-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false">
+          <ul id="site-search-results" class="search-results" hidden></ul>
+        </div>
+      </div>
+
+      {% if site.github.repository_url %}
+      <p class="view"><a href="{{ site.github.repository_url }}">View the Project on GitHub <small>{{ site.github.repository_nwo }}</small></a></p>
+      {% endif %}
+    </header>
+
+    <section>
+      {{ content }}
+    </section>
+
+    <footer>
+      {% if site.github.owner_name %}<p>Project maintained by {{ site.github.owner_name }}</p>{% endif %}
+      <p>Hosted on GitHub Pages &mdash; theme by <a href="https://github.com/orderedlist">orderedlist</a></p>
+    </footer>
+  </div>
+
+  <script>
+  (function () {
+    var base = (document.body.getAttribute('data-baseurl') || '');
+    var input = document.getElementById('site-search-input');
+    var list = document.getElementById('site-search-results');
+    if (!input || !list) return;
+    var indexPromise = null;
+    function getIndex() {
+      if (!indexPromise) {
+        indexPromise = fetch(base + '/search.json', { cache: 'no-cache' }).then(function (r) { return r.json(); });
+      }
+      return indexPromise;
+    }
+    function snippet(text, q) {
+      var i = text.toLowerCase().indexOf(q);
+      if (i < 0) return text.slice(0, 120);
+      var start = Math.max(0, i - 40);
+      return (start > 0 ? '…' : '') + text.slice(start, i + 80).trim() + '…';
+    }
+    input.addEventListener('input', function () {
+      var q = input.value.trim().toLowerCase();
+      list.innerHTML = '';
+      if (q.length < 2) { list.hidden = true; return; }
+      getIndex().then(function (data) {
+        var hits = data.map(function (p) {
+          var t = (p.title || '').toLowerCase();
+          var c = (p.content || '').toLowerCase();
+          var score = (t.indexOf(q) >= 0 ? 10 : 0) + (c.indexOf(q) >= 0 ? 1 : 0);
+          return { p: p, score: score };
+        }).filter(function (x) { return x.score > 0; })
+          .sort(function (a, b) { return b.score - a.score; })
+          .slice(0, 8);
+        if (!hits.length) {
+          list.innerHTML = '<li class="search-empty">No matches</li>';
+        } else {
+          list.innerHTML = hits.map(function (x) {
+            return '<li><a href="' + x.p.url + '"><strong>' + x.p.title +
+              '</strong><br><small>' + snippet(x.p.content || '', q) + '</small></a></li>';
+          }).join('');
+        }
+        list.hidden = false;
+      }).catch(function () { list.hidden = true; });
+    });
+    document.addEventListener('click', function (e) {
+      if (!list.contains(e.target) && e.target !== input) list.hidden = true;
+    });
+  })();
+  </script>
+</body>
+</html>

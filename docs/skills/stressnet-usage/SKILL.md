@@ -1,5 +1,6 @@
 ---
 name: stressnet-usage
+title: Using stressnet — train, fine-tune, report
 description: >
   Train, fine-tune, run experiments with, and report on the stressnet CNN
   models for 2D microscopy regression/classification (reference task: mechanical

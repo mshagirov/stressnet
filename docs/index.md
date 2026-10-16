@@ -13,6 +13,30 @@ multi-channel 2D microscopy dataset. The repository is split into a reusable
 library (`stressnet/`), core model/data modules at the root, and thin CLI
 drivers.
 
+## Quick start
+
+```bash
+uv sync                                       # create .venv, install pinned deps
+
+cp site_config.example.yaml site_config.yaml  # point at YOUR data, then edit
+uv run python -m stressnet.config --show      # verify path resolution
+
+uv run python train_stiffness_regression.py --debug        # fast smoke test
+uv run python train_stiffness_regression.py --dataset datav5
+
+uv run python predict.py --task auto --dataset datav5 \
+    --phase prediction --weights <run>/<weights>.pt
+```
+
+No dataset or output path is hard-coded: everything is resolved from
+`site_config.yaml` (or the `STRESSNET_*` environment variables) through
+`stressnet.config`. To check an install without any real data, run
+`uv run python scripts/selfcheck.py` (it builds a tiny synthetic dataset in a
+temp directory). Reproducing the original project? Its machine-specific paths,
+thresholds and recorded results live in the gitignored `HELP.md` (optional) —
+see [configuration.md](configuration.md) for the full `site_config.yaml`
+schema and [training.md](training.md) for what each driver writes.
+
 ## Reading order
 
 1. [configuration.md](configuration.md) — point the project at *your* data. **Start here.**

@@ -1,0 +1,19 @@
+---
+# Renders the JSON index that powers the client-side search on every page.
+# Not a visible page: layout: null keeps it as raw JSON.
+layout: null
+sitemap: false
+---
+{% assign first = true %}[
+{%- for p in site.pages -%}
+  {%- if p.title and p.url != '/search.json' -%}
+    {%- unless first %},{% endunless -%}
+    {%- assign first = false -%}
+    {
+      "title": {{ p.title | jsonify }},
+      "url": {{ p.url | relative_url | jsonify }},
+      "content": {{ p.content | strip_html | strip_newlines | jsonify }}
+    }
+  {%- endif -%}
+{%- endfor -%}
+]
