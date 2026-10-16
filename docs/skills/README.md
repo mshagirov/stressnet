@@ -1,3 +1,7 @@
+---
+title: Agent skills
+---
+
 # Example OpenCode skills
 
 This directory ships two **example skills** for working with `stressnet`.

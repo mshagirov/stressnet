@@ -1,3 +1,7 @@
+---
+title: Configuration
+---
+
 # Configuration
 
 Nothing about *your* machine, dataset location or collaborator lives in the
@@ -57,7 +61,7 @@ datasets:
 | `datasets.<key>.channel_prefixes` | no | Image filename prefixes, e.g. `C1-`. |
 | `datasets.<key>.stiffness_col` | no | Spreadsheet column holding the target. |
 
-The tracked template [`site_config.example.yaml`](../site_config.example.yaml)
+The tracked template `site_config.example.yaml` (at the repository root)
 documents every field, including the rarely-changed split conventions
 (`train_dir`, `train_suffix`, `train_labels`, `prediction_dir`,
 `prediction_suffix`, `prediction_labels`) — see [data.md](data.md).

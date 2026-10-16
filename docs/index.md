@@ -1,3 +1,7 @@
+---
+title: stressnet
+---
+
 # stressnet documentation
 
 Fine-tuning CNNs (ResNet18/34) on 16-bit multi-channel microscopy TIFFs to

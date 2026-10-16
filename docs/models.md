@@ -1,3 +1,7 @@
+---
+title: Models
+---
+
 # Models and checkpoints
 
 ## What gets saved

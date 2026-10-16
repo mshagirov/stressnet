@@ -1,3 +1,7 @@
+---
+title: Training
+---
+
 # Training
 
 Every driver is a thin CLI on top of the `stressnet/` library. They share the

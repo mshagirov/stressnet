@@ -1,0 +1,39 @@
+# GitHub Pages (Jekyll) configuration for the docs/ folder.
+#
+# The Pages site is built from this folder (`main` branch, `/docs` source), so
+# this file is the Jekyll site root. Local preview:
+#   cd docs && bundle exec jekyll serve    # needs the github-pages gem
+# GitHub builds it automatically on every push to main.
+
+title: stressnet
+description: >-
+  Fine-tuning CNNs (ResNet18/34) for cardiac mechanical stiffness regression and
+  age / stiffness-category classification from 16-bit microscopy TIFFs.
+
+theme: jekyll-theme-minimal
+
+# Render the repository's relative `*.md` links as links to the generated
+# `*.html` pages (the plugin ships with GitHub Pages).
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: false
+
+markdown: kramdown
+kramdown:
+  input: GFM
+
+# Give every page the theme layout without touching each file's front matter.
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Keep build tooling out of the published site.
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - .bundle

@@ -1,3 +1,7 @@
+---
+title: Data
+---
+
 # Data
 
 ## Expected layout
