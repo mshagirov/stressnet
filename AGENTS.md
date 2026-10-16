@@ -31,10 +31,12 @@ models, transforms, classifiers"`) or running a driver with `--debug`.
 
 Never commit site-specific values: no absolute paths, no dataset folder names,
 no private remotes, no collaborator names. Add them to the gitignored
-`HELP.md`; wire paths through `site_config.yaml` (copy
-`site_config.example.yaml`) or the `STRESSNET_DATA_ROOT` / `STRESSNET_SAVE_ROOT`
-env vars. Resolve via `stressnet.config` (`dataset_config(key)`, `save_root()`,
-…); inspect with `uv run python -m stressnet.config --show`. Dataset keys
+`HELP.md` (optional — only needed to reproduce the original project; the
+library itself needs only `site_config.yaml`); wire paths through
+`site_config.yaml` (copy `site_config.example.yaml`) or the
+`STRESSNET_DATA_ROOT` / `STRESSNET_SAVE_ROOT` env vars. Resolve via
+`stressnet.config` (`dataset_config(key)`, `save_root()`, …); inspect with
+`uv run python -m stressnet.config --show`. Dataset keys
 (`datav5`, `datav6`, `datav5.2`) are logical; only their `dir` is site data.
 
 ## Dataset & leakage warnings

@@ -91,13 +91,19 @@ uv run python -m stressnet.config --init \
 
 `--init` refuses to overwrite an existing file unless `--force` is passed.
 
-## `HELP.md`
+## `HELP.md` (optional)
 
 `HELP.md` at the repository root is **gitignored** and holds the concrete,
 machine-specific values: this machine's paths, dataset folder names, private
-remote, collaborator notes and where existing checkpoints live. Whenever a
-tracked file shows a placeholder like `/path/to/datasets`, `HELP.md` is where
-the real value for your machine belongs. Keep it up to date locally and never
-commit it.
+remote, collaborator notes and where existing checkpoints live. It is
+**optional** — the library works without it by resolving everything from
+`site_config.yaml`. You only need it to reproduce the **original project** with
+its specific datasets, thresholds and toolchain. Whenever a tracked file shows a
+placeholder like `/path/to/datasets`, `HELP.md` (if present on your machine) is
+where that real value belongs. Keep it local and never commit it.
+
+On machines that also use the AI coding-agent harness, `HELP.md` additionally
+keeps the agent tooling and its configs separate from regular library usage; see
+the file itself for that breakdown.
 
 See also: [data.md](data.md) · [models.md](models.md) · [training.md](training.md)

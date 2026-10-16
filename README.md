@@ -22,28 +22,9 @@ uv sync                       # creates .venv and installs pinned deps
 uv run python check_cuda.py   # optional: confirm torch sees a GPU
 ```
 
-## Verify your install
+## Quick start
 
-`scripts/selfcheck.py` needs **no private data**: it writes a small synthetic
-dataset (16-bit TIFFs, labels spreadsheets, `stiffness_thresholds.yaml`) into a
-temporary directory and points `STRESSNET_CONFIG` at a throw-away config for
-it. It then checks the whole stack — module imports, every `Dataset` class, the
-train/val/held-out split builders, one classifier and one regression epoch, and
-the `train_stiffness_regression.py` / `train_age_classifier_v2.py` / `predict.py`
-CLIs as subprocesses — and prints `PASS`/`FAIL` per check:
-
-```bash
-uv run python scripts/selfcheck.py          # ~30 s on GPU, ~1 min on CPU
-uv run python scripts/selfcheck.py --keep   # keep the temp tree for inspection
-```
-
-The exit code is 0 only if every check passes, so it doubles as a CI gate. All
-artefacts stay inside the temporary tree (removed on success *and* failure);
-nothing is written into the repository or your `site_config.yaml`.
-
-## 60-second quickstart
-
-**1. Configure** (once per machine):
+**1. Configure** (once per machine), pointing at *your* data:
 
 ```bash
 cp site_config.example.yaml site_config.yaml   # then edit your paths
@@ -51,6 +32,11 @@ uv run python -m stressnet.config --show       # verify resolution
 ```
 
 See [docs/configuration.md](docs/configuration.md) for the full schema.
+Reproducing the **original project** with its specific datasets, thresholds and
+toolchain on a shared machine? The exact paths live in the gitignored
+`HELP.md` (not in the public repo) — that file is **optional** and only needed
+for that reproduction; day-to-day use of the library only needs
+`site_config.yaml`.
 
 **2. Train** (a fast smoke test, then a real run):
 
@@ -70,6 +56,25 @@ uv run python predict.py --task auto --dataset datav5 \
 `predict.py` is config-driven: it resolves the dataset layout, label file and
 channel conventions from `site_config.yaml`, so unlike the legacy CLI you do not
 pass data directories, label files or channel suffixes by hand.
+
+## Verify your install
+
+`scripts/selfcheck.py` needs **no private data**: it writes a small synthetic
+dataset (16-bit TIFFs, labels spreadsheets, `stiffness_thresholds.yaml`) into a
+temporary directory and points `STRESSNET_CONFIG` at a throw-away config for
+it. It then checks the whole stack — module imports, every `Dataset` class, the
+train/val/held-out split builders, one classifier and one regression epoch, and
+the `train_stiffness_regression.py` / `train_age_classifier_v2.py` / `predict.py`
+CLIs as subprocesses — and prints `PASS`/`FAIL` per check:
+
+```bash
+uv run python scripts/selfcheck.py          # ~30 s on GPU, ~1 min on CPU
+uv run python scripts/selfcheck.py --keep   # keep the temp tree for inspection
+```
+
+The exit code is 0 only if every check passes, so it doubles as a CI gate. All
+artefacts stay inside the temporary tree (removed on success *and* failure);
+nothing is written into the repository or your `site_config.yaml`.
 
 ## Repository layout
 
