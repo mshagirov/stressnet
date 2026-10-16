@@ -1,5 +1,6 @@
 ---
 title: Training
+subtitle: "Training drivers and artefacts"
 ---
 
 # Training

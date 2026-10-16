@@ -1,5 +1,6 @@
 ---
 title: Reproduction
+subtitle: "Step-by-step experiment recipes"
 ---
 
 # Reproduction

@@ -8,28 +8,33 @@
   <meta name="description" content="{{ page.description | default: site.description | strip_newlines | escape }}">
   <link rel="stylesheet" href="{{ '/assets/css/style.css' | relative_url }}">
   <style>
-    .site-tools { margin-top: 1rem; }
-    .site-tools .toc summary {
-      cursor: pointer;
-      display: inline-block;
-      padding: .4rem .9rem;
-      border: 1px solid #159957;
-      border-radius: 6px;
-      color: #159957;
-      font-weight: 600;
-      user-select: none;
+    /* Desktop only: full-width reading pane + narrower fixed side panel.
+       Mobile keeps the theme's stacked layout untouched. */
+    @media screen and (min-width: 961px) {
+      body { padding: 40px; }
+      .wrapper { width: auto; max-width: none; margin: 0; }
+      header { width: 190px; max-height: calc(100vh - 80px); overflow-y: auto; }
+      section { width: calc(100% - 230px); }
+      footer { width: 190px; }
     }
-    .site-tools .toc[open] summary { background: #159957; color: #fff; }
-    .site-tools .toc ol { margin: .6rem 0 0; padding-left: 1.2rem; }
-    .site-tools .toc li { margin: .2rem 0; }
-    .site-search { position: relative; margin-top: .75rem; }
+
+    header .subtitle { margin: -.6rem 0 .8rem; color: #666; font-size: 13px; }
+    header p.view { margin-top: 0; }
+
+    .site-tools { margin-top: 1.5rem; }
+    .site-tools h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: #666; margin: 0 0 .5rem; }
+    .site-tools ol { margin: 0 0 1rem; padding-left: 1.1rem; }
+    .site-tools li { margin: .25rem 0; line-height: 1.35; }
+    .site-tools a { font-size: 13px; }
+
+    .site-search { position: relative; margin-top: .5rem; }
     .site-search input {
       width: 100%;
       box-sizing: border-box;
-      padding: .5rem .7rem;
+      padding: .45rem .6rem;
       border: 1px solid #d0d0d0;
       border-radius: 6px;
-      font-size: .95rem;
+      font-size: .9rem;
     }
     .search-results {
       position: absolute;
@@ -47,24 +52,25 @@
       overflow-y: auto;
     }
     .search-results li { margin: 0; }
-    .search-results a { display: block; padding: .5rem .7rem; text-decoration: none; color: inherit; }
+    .search-results a { display: block; padding: .45rem .6rem; text-decoration: none; color: inherit; font-size: 13px; }
     .search-results a:hover { background: #f2f8f4; }
     .search-results small { color: #666; }
-    .search-empty { padding: .5rem .7rem; color: #666; }
-    @media (min-width: 961px) {
-      .site-tools { position: sticky; top: 1rem; }
-    }
+    .search-empty { padding: .45rem .6rem; color: #666; font-size: 13px; }
   </style>
 </head>
 <body data-baseurl="{{ site.baseurl }}">
   <div class="wrapper">
     <header>
       <h1><a href="{{ '/' | relative_url }}">{{ site.title }}</a></h1>
-      <p>{{ site.description }}</p>
+      <p class="subtitle">{{ page.subtitle | default: page.title | default: site.title }}</p>
+
+      {% if site.github.repository_url %}
+      <p class="view"><a href="{{ site.github.repository_url }}">View on Github</a></p>
+      {% endif %}
 
       <div class="site-tools">
-        <details class="toc">
-          <summary>Contents</summary>
+        <h3>Contents</h3>
+        <nav aria-label="Contents">
           <ol>
             <li><a href="{{ '/' | relative_url }}">Home / Quick start</a></li>
             <li><a href="{{ '/configuration.html' | relative_url }}">1. Configuration</a></li>
@@ -75,18 +81,14 @@
             <li><a href="{{ '/architecture.html' | relative_url }}">6. Architecture</a></li>
             <li><a href="{{ '/skills/README.html' | relative_url }}">Agent skills</a></li>
           </ol>
-        </details>
+        </nav>
 
         <div class="site-search">
-          <label for="site-search-input" class="visually-hidden" style="position:absolute;left:-9999px;">Search the docs</label>
+          <label for="site-search-input" style="position:absolute;left:-9999px;">Search the docs</label>
           <input id="site-search-input" type="search" placeholder="Search docs…" autocomplete="off" spellcheck="false">
           <ul id="site-search-results" class="search-results" hidden></ul>
         </div>
       </div>
-
-      {% if site.github.repository_url %}
-      <p class="view"><a href="{{ site.github.repository_url }}">View the Project on GitHub <small>{{ site.github.repository_nwo }}</small></a></p>
-      {% endif %}
     </header>
 
     <section>

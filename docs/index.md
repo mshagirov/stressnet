@@ -1,5 +1,6 @@
 ---
 title: stressnet
+subtitle: "Overview and quick start"
 ---
 
 # stressnet documentation

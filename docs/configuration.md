@@ -1,5 +1,6 @@
 ---
 title: Configuration
+subtitle: "Configure paths and datasets"
 ---
 
 # Configuration

@@ -1,5 +1,6 @@
 ---
 title: Agent skills
+subtitle: "Example agent skills"
 ---
 
 # Example OpenCode skills

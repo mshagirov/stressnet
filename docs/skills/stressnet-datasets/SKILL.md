@@ -1,6 +1,7 @@
 ---
 name: stressnet-datasets
 title: Loading and checking datasets
+subtitle: "Load and validate datasets"
 description: >
   Load, resolve and validate the image datasets used by stressnet, and
   help point the project at or prepare a compatible dataset when it is missing

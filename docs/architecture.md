@@ -1,5 +1,6 @@
 ---
 title: Architecture
+subtitle: "Module map and rationale"
 ---
 
 # Architecture

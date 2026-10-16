@@ -1,5 +1,6 @@
 ---
 title: Data
+subtitle: "Dataset layout and labels"
 ---
 
 # Data
