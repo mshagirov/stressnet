@@ -2,7 +2,7 @@
 name: stressnet-usage
 description: >
   Train, fine-tune, run experiments with, and report on the stressnet CNN
-  models for cardiac stiffness. Use when asked to train or fine-tune a model
+  models for mechanical stiffness. Use when asked to train or fine-tune a model
   (including fine-tuning on top of an existing checkpoint), run an experiment,
   find where trained models are saved, choose a model or run naming convention,
   or summarise results from the experiment reports. Triggers: train, fine-tune,
@@ -12,10 +12,11 @@ description: >
 
 # Using stressnet: train, fine-tune, report
 
-The repo fine-tunes ResNet18/34 models to (a) predict cardiac stiffness as a
+The repo fine-tunes ResNet18/34 models to (a) predict mechanical stiffness as a
 scalar (regression) and (b) classify age (`young`/`adult`) or stiffness
 categories from 16-bit TIFF microscopy channels (Nucleus/Collagen, optionally
-Actin).
+Actin). The pipeline is not specific to any sample type — any 2D multi-channel
+microscopy dataset with the layout in `docs/data.md` works.
 
 Training drivers live at the repository root (`train_*.py`); shared code lives in
 `stressnet/` (`config.py`, `data.py`, `engine.py`, `metrics.py`, `plots.py`,

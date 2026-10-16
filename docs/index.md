@@ -5,8 +5,10 @@ title: stressnet
 # stressnet documentation
 
 Fine-tuning CNNs (ResNet18/34) on 16-bit multi-channel microscopy TIFFs to
-predict cardiac mechanical stiffness (regression) and to classify age or
-stiffness categories. The repository is split into a reusable library
+predict mechanical stiffness (regression) and to classify age or
+stiffness categories. It is **not tied to any sample type** — it works with any
+2D multi-channel microscopy dataset that follows the layout in
+[data.md](data.md). The repository is split into a reusable library
 (`stressnet/`), core model/data modules at the root, and thin CLI drivers.
 
 ## Reading order

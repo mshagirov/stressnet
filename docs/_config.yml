@@ -7,7 +7,7 @@
 
 title: stressnet
 description: >-
-  Fine-tuning CNNs (ResNet18/34) for cardiac mechanical stiffness regression and
+  Fine-tuning CNNs (ResNet18/34) for mechanical stiffness regression and
   age / stiffness-category classification from 16-bit microscopy TIFFs.
 
 theme: jekyll-theme-minimal
