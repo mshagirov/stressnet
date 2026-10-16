@@ -1,4 +1,4 @@
-"""Site configuration for stressnet-tests.
+"""Site configuration for stressnet.
 
 Dataset locations and saved-model locations are **site-specific** and are
 deliberately not hard-coded anywhere in this repository. Everything that is

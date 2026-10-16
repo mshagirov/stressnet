@@ -1,4 +1,4 @@
-# stressnet-tests
+# stressnet
 
 Fine-tuning CNNs (ResNet18/34) on 16-bit TIFF microscopy channels (Nucleus,
 Collagen, optionally Actin) to:
@@ -79,7 +79,7 @@ nothing is written into the repository or your `site_config.yaml`.
 ## Repository layout
 
 ```text
-stressnet-tests/
+stressnet/
 ├── stressnet/            # shared library (importable)
 │   ├── config.py         #   site config: dataset_config(), save_root(), ...
 │   ├── data.py           #   splits, datasets/loaders builders, transforms

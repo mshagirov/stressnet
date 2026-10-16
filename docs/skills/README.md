@@ -1,6 +1,6 @@
 # Example OpenCode skills
 
-This directory ships two **example skills** for working with `stressnet-tests`.
+This directory ships two **example skills** for working with `stressnet`.
 They are documentation, not active configuration: nothing here is auto-loaded by
 OpenCode, and no script reads these files. Copy the skill you want into a skill
 directory (see below) to make it available to the agent.

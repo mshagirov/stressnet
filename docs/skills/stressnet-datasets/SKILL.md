@@ -1,7 +1,7 @@
 ---
 name: stressnet-datasets
 description: >
-  Load, resolve and validate the image datasets used by stressnet-tests, and
+  Load, resolve and validate the image datasets used by stressnet, and
   help point the project at or prepare a compatible dataset when it is missing
   or mis-formatted. Use when asked to load or check a dataset, when a dataset is
   missing or not found, to prepare a dataset, or to point the project at data.

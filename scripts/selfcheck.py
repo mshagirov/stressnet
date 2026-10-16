@@ -652,7 +652,7 @@ CHECKS = (
 # --------------------------------------------------------------------------- #
 def parse_args(argv: list[str]) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Synthetic-data self-check for the stressnet-tests stack",
+        description="Synthetic-data self-check for the stressnet stack",
     )
     parser.add_argument(
         "--keep",
@@ -670,7 +670,7 @@ def main(argv: list[str] | None = None) -> int:
     ctx: dict = {"tmp": tmp_root, "save_root": tmp_root / "saved"}
     exit_code = 1
 
-    print(f"stressnet-tests self-check\n  temp tree : {tmp_root}")
+    print(f"stressnet self-check\n  temp tree : {tmp_root}")
     started = time.time()
     try:
         # 1. throw-away site config + synthetic dataset, then point the whole

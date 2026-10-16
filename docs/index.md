@@ -1,4 +1,4 @@
-# stressnet-tests documentation
+# stressnet documentation
 
 Fine-tuning CNNs (ResNet18/34) on 16-bit multi-channel microscopy TIFFs to
 predict cardiac mechanical stiffness (regression) and to classify age or

@@ -1,7 +1,7 @@
 ---
 name: stressnet-usage
 description: >
-  Train, fine-tune, run experiments with, and report on the stressnet-tests CNN
+  Train, fine-tune, run experiments with, and report on the stressnet CNN
   models for cardiac stiffness. Use when asked to train or fine-tune a model
   (including fine-tuning on top of an existing checkpoint), run an experiment,
   find where trained models are saved, choose a model or run naming convention,
@@ -10,7 +10,7 @@ description: >
   models, model naming convention, report on experiments.
 ---
 
-# Using stressnet-tests: train, fine-tune, report
+# Using stressnet: train, fine-tune, report
 
 The repo fine-tunes ResNet18/34 models to (a) predict cardiac stiffness as a
 scalar (regression) and (b) classify age (`young`/`adult`) or stiffness

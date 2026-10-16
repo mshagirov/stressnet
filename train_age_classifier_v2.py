@@ -26,7 +26,7 @@ Strategies (all ImageNet-pretrained, dropout head, label smoothing, AdamW):
 Dataset locations, save locations and the label-file layout come from
 stressnet.config (site_config.yaml / environment variables); see HELP.md.
 
-Usage (from inside stressnet-tests/):
+Usage (from inside stressnet/):
     uv run python train_age_classifier_v2.py                    # all runs
     uv run python train_age_classifier_v2.py --debug            # fast smoke test
     uv run python train_age_classifier_v2.py --datasets datav5 \

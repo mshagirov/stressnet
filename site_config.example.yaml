@@ -1,4 +1,4 @@
-# Site configuration for stressnet-tests.
+# Site configuration for stressnet.
 #
 # Copy this file to `site_config.yaml` (gitignored) and fill in YOUR paths.
 # Nothing in this example is site-specific, and `site_config.yaml` must never

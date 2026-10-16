@@ -15,7 +15,7 @@ specialized for the 3 stiffness categories.
 Dataset locations, save locations, label-file layout and the stiffness
 thresholds file come from stressnet.config / the dataset root; see HELP.md.
 
-Usage (from inside stressnet-tests/):
+Usage (from inside stressnet/):
     uv run python train_stiffness_classifier_v2.py          # datav5, best config
     uv run python train_stiffness_classifier_v2.py --debug  # fast smoke test
 '''

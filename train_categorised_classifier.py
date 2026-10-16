@@ -16,7 +16,7 @@ specialized for the 2 categories.
 Dataset locations, save locations and the label-file layout come from
 stressnet.config (site_config.yaml / environment variables); see HELP.md.
 
-Usage (from inside stressnet-tests/):
+Usage (from inside stressnet/):
     uv run python train_categorised_classifier.py          # datav5, best config
     uv run python train_categorised_classifier.py --debug  # fast smoke test
 '''

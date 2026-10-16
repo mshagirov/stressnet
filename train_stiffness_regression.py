@@ -17,7 +17,7 @@ curves and a two-panel predicted-vs-true scatter (train / val) with a dashed
 1-to-1 line. Dataset roots, the stiffness column and save_root come from
 stressnet.config (site_config.yaml / environment variables); see HELP.md.
 
-Usage (from inside stressnet-tests/):
+Usage (from inside stressnet/):
     uv run python train_stiffness_regression.py --dataset datav5
     uv run python train_stiffness_regression.py --debug        # smoke test
 '''

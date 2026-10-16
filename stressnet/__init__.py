@@ -1,4 +1,4 @@
-"""Shared library for the stressnet-tests project.
+"""Shared library for the stressnet project.
 
 The training scripts (`train_*.py`) at the repository root are thin CLI
 entrypoints; reusable training, data, plotting, reporting and configuration
