@@ -28,6 +28,7 @@
     .site-tools ol { margin: 0 0 1rem; padding-left: 1.1rem; }
     .site-tools li { margin: .25rem 0; line-height: 1.35; }
     .site-tools a { font-size: 13px; }
+    .site-tools a.current { font-weight: 700; color: #111; }
 
     .site-search { position: relative; margin-top: .5rem; }
     .site-search input {
@@ -72,14 +73,22 @@
         <h3>Contents</h3>
         <nav aria-label="Contents">
           <ol>
-            <li><a href="{{ '/' | relative_url }}">Home / Quick start</a></li>
-            <li><a href="{{ '/configuration.html' | relative_url }}">Configuration</a></li>
-            <li><a href="{{ '/data.html' | relative_url }}">Data</a></li>
-            <li><a href="{{ '/training.html' | relative_url }}">Training</a></li>
-            <li><a href="{{ '/models.html' | relative_url }}">Models &amp; fine-tuning</a></li>
-            <li><a href="{{ '/reproduction.html' | relative_url }}">Reproduction</a></li>
-            <li><a href="{{ '/architecture.html' | relative_url }}">Architecture</a></li>
-            <li><a href="{{ '/skills/README.html' | relative_url }}">Agent skills</a></li>
+            {%- assign t = '/' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Home / Quick start</a></li>
+            {%- assign t = '/configuration.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Configuration</a></li>
+            {%- assign t = '/data.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Data</a></li>
+            {%- assign t = '/training.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Training</a></li>
+            {%- assign t = '/models.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Models &amp; fine-tuning</a></li>
+            {%- assign t = '/reproduction.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Reproduction</a></li>
+            {%- assign t = '/architecture.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t %} class="current" aria-current="page"{% endif %}>Architecture</a></li>
+            {%- assign t = '/skills/README.html' -%}
+            <li><a href="{{ t | relative_url }}"{% if page.url == t or page.url contains '/skills/' %} class="current" aria-current="page"{% endif %}>Agent skills</a></li>
           </ol>
         </nav>
 
